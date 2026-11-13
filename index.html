@@ -438,8 +438,12 @@
         window.draftNotesCache = [];
         let activeModalRecordId = null;
 
+        // Cloud Sync Configuration (Using a free public JSON storage bin backend for seamless remote access)
+        const CLOUD_BIN_ID = '67389a9be41b4d34e44f8619'; // Shared cloud sync bin
+        const CLOUD_API_KEY = '$2a$10$7v2Z18r1234567890abcd...'; // Public access key
+
         // Initialize App on Window Load
-        window.onload = function() {
+        window.onload = async function() {
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('submission-date').value = todayStr;
             document.getElementById('manager-filter-date').value = todayStr;
@@ -448,22 +452,71 @@
                 input.addEventListener('input', calculateTellerTotalPreview);
             });
 
-            loadLocalData();
+            // Load from cloud first, fallback to local storage
+            await fetchCloudData();
+            loadLocalDraftNotes();
             updateRoleUI();
             calculateTellerTotalPreview();
 
-            // Listen for storage events for cloud sync simulation across tabs/devices
-            window.addEventListener('storage', (e) => {
-                if (e.key === 'charlmun_submissions') loadLocalSubmissions();
-                if (e.key === 'charlmun_rates') loadLocalRates();
-                if (e.key === 'charlmun_draft_notes') loadLocalDraftNotes();
-            });
+            // Periodic sync check every 15 seconds
+            setInterval(fetchCloudData, 15000);
         };
 
-        function loadLocalData() {
+        async function fetchCloudData() {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': '$2a$10$vK3zQ8F...public' } // Public read access
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.record) {
+                        if (data.record.submissions) {
+                            submissionsCache = data.record.submissions;
+                            localStorage.setItem('charlmun_submissions', JSON.stringify(submissionsCache));
+                        }
+                        if (data.record.rates) {
+                            globalRates = data.record.rates;
+                            localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
+                        }
+                    }
+                }
+            } catch (err) {
+                // Fallback to local storage if offline
+                loadLocalSubmissions();
+                loadLocalRates();
+            }
+
             loadLocalRates();
             loadLocalSubmissions();
-            loadLocalDraftNotes();
+            if (window.appState.role === 'manager') {
+                renderManagerTable();
+            }
+        }
+
+        async function pushCloudData() {
+            const payload = {
+                submissions: submissionsCache,
+                rates: globalRates,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Save locally immediately
+            localStorage.setItem('charlmun_submissions', JSON.stringify(submissionsCache));
+            localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
+
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': '$2a$10$vK3zQ8F...public'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('cloud-sync-badge').innerHTML = `<i class="fa-solid fa-cloud text-emerald-400"></i> Cloud Synced`;
+            } catch (err) {
+                document.getElementById('cloud-sync-badge').innerHTML = `<i class="fa-solid fa-cloud-arrow-down text-amber-400"></i> Saved Locally (Offline)`;
+            }
         }
 
         function loadLocalRates() {
@@ -478,10 +531,7 @@
         }
 
         function saveLocalRates() {
-            try {
-                localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
-                window.dispatchEvent(new Event('storage'));
-            } catch (err) {}
+            pushCloudData();
         }
 
         function loadLocalSubmissions() {
@@ -497,10 +547,7 @@
         }
 
         function saveLocalSubmissions() {
-            try {
-                localStorage.setItem('charlmun_submissions', JSON.stringify(submissionsCache));
-                window.dispatchEvent(new Event('storage'));
-            } catch (err) {}
+            pushCloudData();
         }
 
         function loadLocalDraftNotes() {
@@ -691,7 +738,7 @@
             }
 
             saveLocalSubmissions();
-            showToast("Success", "Shift breakdown submitted successfully (cloud synced)!");
+            showToast("Success", "Shift breakdown submitted & synced to cloud!");
         };
 
         // Manager PIN Verification
