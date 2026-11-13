@@ -81,6 +81,30 @@
                 <form id="sales-form" onsubmit="submitSales(event)" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         
+                        <!-- Float -->
+                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 hover:border-indigo-300 transition">
+                            <label class="block text-xs font-bold text-indigo-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-vault text-indigo-600"></i> Starting Float</span>
+                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Float" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- USD Payments -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-1-wave text-emerald-700"></i> USD Payments</span>
+                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Payments" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                        </div>
+
                         <!-- Cash ($USD) -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
@@ -177,18 +201,6 @@
                             </div>
                         </div>
 
-                        <!-- Store Credit -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-store text-rose-600"></i> Store Credit</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Store Credit" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
                         <!-- Credit -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
@@ -225,6 +237,70 @@
                             </div>
                         </div>
 
+                    </div>
+
+                    <!-- Physical Cash at Hand Section -->
+                    <div class="mt-6 pt-6 border-t border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-emerald-600"></i> Physical Cash at Hand (Closing Drawer Count)
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- USD Cash at Hand -->
+                            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 transition">
+                                <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> USD Cash at Hand</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
+                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Cash at Hand" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Rand Cash at Hand -->
+                            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 transition">
+                                <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> Rand Cash at Hand</span>
+                                    <span class="text-[10px] text-emerald-600 font-bold">ZAR (R)</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
+                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Rand Cash at Hand" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expenses Section: Payments to Suppliers or Offloaders -->
+                    <div class="mt-6 pt-6 border-t border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-dollar text-indigo-600"></i> Cash Outflows / Expenses Paid by Teller (Suppliers & Offloaders)
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Paid to Suppliers / Offloaders (USD) -->
+                            <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition">
+                                <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
+                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Paid to Suppliers / Offloaders (ZAR/Rand) -->
+                            <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition">
+                                <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
+                                    <span class="text-[10px] text-rose-600 font-bold">ZAR (R)</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
+                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments ZAR" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Submission Summary & Button -->
@@ -353,8 +429,22 @@
                 </div>
 
                 <div id="teller-name-group">
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Teller Name / ID</label>
-                    <input type="text" id="modal-teller-name" value="Teller 01 (John Doe)" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Select Teller Name</label>
+                    <select id="modal-teller-name" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
+                        <option value="Lilian Chidia">Lilian Chidia</option>
+                        <option value="Rumbidzai Makadho">Rumbidzai Makadho</option>
+                        <option value="Panashe Makandiwona">Panashe Makandiwona</option>
+                        <option value="Tinotenda Chikwanda">Tinotenda Chikwanda</option>
+                    </select>
+                </div>
+
+                <!-- Manager PIN Access Control Group -->
+                <div id="manager-pin-group" class="hidden">
+                    <label class="block text-xs font-bold text-rose-800 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-lock text-rose-600"></i> Supervisor PIN Code
+                    </label>
+                    <input type="password" id="manager-pin-input" placeholder="Enter 4-digit PIN (default: 1234)" class="w-full px-3 py-2.5 border border-rose-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none bg-rose-50/50">
+                    <p class="text-[11px] text-slate-400 mt-1">Default security PIN is <strong class="text-slate-600">1234</strong>.</p>
                 </div>
             </div>
 
@@ -402,7 +492,7 @@
 
         window.appState = {
             role: 'teller',
-            tellerName: 'Teller 01 (John Doe)'
+            tellerName: 'Lilian Chidia'
         };
 
         window.onload = function() {
@@ -477,10 +567,22 @@
             document.querySelectorAll('.mode-input').forEach(input => {
                 const val = parseFloat(input.value) || 0;
                 const curr = input.getAttribute('data-curr');
+                const mode = input.getAttribute('data-mode');
+                
+                let modeValZar = 0;
                 if (curr === 'USD') {
-                    totalZar += val * globalRates.USD;
+                    modeValZar = val * globalRates.USD;
                 } else if (curr === 'ZIG') {
-                    totalZar += val * globalRates.ZIG;
+                    modeValZar = val * globalRates.ZIG;
+                } else if (curr === 'ZAR') {
+                    modeValZar = val;
+                }
+
+                // If it's a cash payout/expense to suppliers or offloaders, it reduces cash/takings in till
+                if (mode.includes('Supplier/Offloader')) {
+                    totalZar -= modeValZar;
+                } else {
+                    totalZar += modeValZar;
                 }
             });
             document.getElementById('teller-total-preview').textContent = `R${totalZar.toFixed(2)}`;
@@ -502,6 +604,11 @@
                 let zarEquivalent = 0;
                 if (curr === 'USD') zarEquivalent = val * globalRates.USD;
                 if (curr === 'ZIG') zarEquivalent = val * globalRates.ZIG;
+                if (curr === 'ZAR') zarEquivalent = val;
+
+                if (mode.includes('Supplier/Offloader')) {
+                    zarEquivalent = -Math.abs(zarEquivalent); // recorded as outgoing expense
+                }
 
                 breakdown[mode] = { raw: val, currency: curr, zar: zarEquivalent };
                 totalZar += zarEquivalent;
@@ -711,17 +818,38 @@
 
         window.onRoleTypeChange = function() {
             const role = document.getElementById('modal-role-select').value;
-            const group = document.getElementById('teller-name-group');
-            if (role === 'manager') group.classList.add('hidden');
-            else group.classList.remove('hidden');
+            const tellerGroup = document.getElementById('teller-name-group');
+            const pinGroup = document.getElementById('manager-pin-group');
+
+            if (role === 'manager') {
+                tellerGroup.classList.add('hidden');
+                pinGroup.classList.remove('hidden');
+            } else {
+                tellerGroup.classList.remove('hidden');
+                pinGroup.classList.add('hidden');
+            }
         };
 
         window.saveRoleConfig = function() {
-            window.appState.role = document.getElementById('modal-role-select').value;
-            window.appState.tellerName = document.getElementById('modal-teller-name').value.trim() || 'Teller 01';
+            const role = document.getElementById('modal-role-select').value;
+            
+            if (role === 'manager') {
+                const pin = document.getElementById('manager-pin-input').value;
+                if (pin !== '569596') {
+                    showToast("Access Denied", "Incorrect supervisor PIN code!", "error");
+                    return;
+                }
+            }
+
+            window.appState.role = role;
+            if (role === 'teller') {
+                window.appState.tellerName = document.getElementById('modal-teller-name').value;
+            }
+
+            document.getElementById('manager-pin-input').value = '';
             toggleRoleModal();
             updateRoleUI();
-            showToast("Role Switched", `Switched to ${window.appState.role === 'manager' ? 'Manager Dashboard' : 'Teller'}`);
+            showToast("Role Switched", `Switched to ${role === 'manager' ? 'Manager Dashboard' : 'Teller: ' + window.appState.tellerName}`);
         };
 
         function updateRoleUI() {
