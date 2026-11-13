@@ -3,88 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teller Sales Reconciliation Portal</title>
-    <!-- Tailwind CSS for modern styling -->
+    <title>Charlmun ERP - Teller Reconciliation & Expense Portal</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome icons -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
+    <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF for PDF Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
 
-    <!-- Top Navigation / Header -->
-    <header class="bg-indigo-900 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center space-x-3">
-                <div class="bg-indigo-700 p-2.5 rounded-xl shadow-inner">
-                    <i class="fa-solid fa-cash-register text-2xl text-amber-300"></i>
+    <!-- Header Navigation -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-800 p-2.5 rounded-xl border border-indigo-700 shadow-inner flex items-center justify-center">
+                    <i class="fa-solid fa-vault text-amber-400 text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">Charlmun ERP Reconciliation</h1>
-                    <p class="text-xs text-indigo-200">Multi-Mode Teller & Manager Portal</p>
+                    <h1 class="font-bold text-base sm:text-lg tracking-tight">Charlmun ERP</h1>
+                    <p class="text-xs text-indigo-300">Teller Reconciliation & Expense Portal</p>
                 </div>
             </div>
-            
-            <!-- User Status & Role Switcher -->
-            <div class="flex items-center gap-3">
-                <div id="auth-status-badge" class="bg-indigo-800/80 px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-700/50 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="current-user-display">Ready</span>
+
+            <!-- Role Switcher & Cloud Sync Indicator -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <div id="cloud-sync-badge" class="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-800/60 text-emerald-200 px-3 py-1.5 rounded-full border border-emerald-600">
+                    <i class="fa-solid fa-cloud text-emerald-400 animate-pulse"></i> Cloud Sync Active
                 </div>
-                <button onclick="toggleRoleModal()" class="bg-amber-500 hover:bg-amber-600 text-indigo-950 font-semibold px-3.5 py-1.5 rounded-lg text-xs transition shadow-sm flex items-center gap-1.5">
-                    <i class="fa-solid fa-user-gear"></i> Switch Role
-                </button>
+                <div class="bg-indigo-950 p-1 rounded-xl flex border border-indigo-800">
+                    <button type="button" onclick="switchRole('teller')" id="btn-role-teller" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-pen"></i> Teller
+                    </button>
+                    <button type="button" onclick="switchRole('manager')" id="btn-role-manager" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-halved"></i> Supervisor
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
-        
-        <!-- Role Banner -->
-        <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-            <div>
-                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Active Role</span>
-                <h2 id="role-title" class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-cash-register text-indigo-600"></i> Teller Portal
-                </h2>
-            </div>
-            <div class="flex items-center gap-3">
-                <div id="active-rates-badge" onclick="openRatesModal()" class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-900 border border-indigo-200 transition flex items-center gap-1.5" title="View/Edit Exchange Rates">
-                    <i class="fa-solid fa-money-bill-transfer text-indigo-600"></i> <span id="rate-summary-text">Rates: USD=R18.5, ZiG=R1.4</span>
-                </div>
-                <div id="date-display" class="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl">
-                    <i class="fa-regular fa-calendar mr-1.5 text-indigo-600"></i> <span id="current-date-str"></span>
-                </div>
-            </div>
-        </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
 
-        <!-- Teller View Section -->
-        <div id="teller-view" class="space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-100">
+        <!-- ==================== TELLER VIEW ==================== -->
+        <div id="view-teller" class="space-y-6">
+            <!-- Top Banner & Teller Selector -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span class="inline-block bg-indigo-50 text-indigo-700 font-semibold text-xs px-2.5 py-1 rounded-full mb-1">Shift Submission</span>
+                    <h2 class="text-xl font-bold text-slate-900">Daily Cash & Expense Breakdown</h2>
+                    <p class="text-xs text-slate-500">Record cash at hand, floats, expenses, and track draft notes securely.</p>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <!-- Branch Selector -->
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900">Teller Daily Sales Submission</h3>
-                        <p class="text-sm text-slate-500">Enter your collected breakdown across all available payment modes. All currencies convert to ZAR (R).</p>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Branch</label>
+                        <select id="branch-selector" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="Checheche Main">Checheche Main</option>
+                            <option value="Checheche Branch 2">Checheche Branch 2</option>
+                            <option value="Harare Branch">Harare Branch</option>
+                        </select>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm font-medium text-slate-600">Shift Date:</label>
-                        <input type="date" id="submission-date" class="px-3 py-2 border border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+
+                    <!-- Teller Name Selector -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Teller Name</label>
+                        <select id="teller-selector" onchange="onTellerChange(this.value)" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="Lilian Chidia">Lilian Chidia</option>
+                            <option value="Rumbidzai Makadho">Rumbidzai Makadho</option>
+                            <option value="Panashe Makandiwona">Panashe Makandiwona</option>
+                            <option value="Tinotenda Chikwanda">Tinotenda Chikwanda</option>
+                        </select>
+                    </div>
+
+                    <!-- Submission Date -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Date</label>
+                        <input type="date" id="submission-date" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     </div>
                 </div>
+            </div>
 
-                <!-- Payment Modes Grid Form -->
-                <form id="sales-form" onsubmit="submitSales(event)" class="space-y-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        
-                        <!-- Float -->
-                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-indigo-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-vault text-indigo-600"></i> Starting Float</span>
+            <!-- Active Exchange Rates Info Bar -->
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2 text-amber-900 font-medium">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+                    <span>Active Conversion Factors (Managed by Supervisor):</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="bg-white px-3 py-1 rounded-lg border border-amber-200 font-bold text-slate-800">1 USD = R<span id="rate-usd-display">18.50</span></span>
+                    <span class="bg-white px-3 py-1 rounded-lg border border-amber-200 font-bold text-slate-800">1 ZiG = R<span id="rate-zig-display">0.40</span> <span class="text-[10px] text-slate-400 font-normal">(1 R = 2.5 ZiG)</span></span>
+                </div>
+            </div>
+
+            <!-- Teller Submission Form -->
+            <form id="teller-form" onsubmit="submitSales(event)" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                
+                <!-- Section 1: Float & Cash at Hand -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-money-bill-wave text-indigo-600"></i> Cash at Hand & Float
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <!-- Float Received -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> Float Received</span>
                                 <span class="text-[10px] text-slate-400 font-normal">$USD</span>
                             </label>
                             <div class="relative">
@@ -93,192 +124,85 @@
                             </div>
                         </div>
 
-                        <!-- USD Payments -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
+                        <!-- USD Cash at Hand -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-1-wave text-emerald-700"></i> USD Payments</span>
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-dollar-sign text-emerald-600"></i> USD Cash at Hand</span>
                                 <span class="text-[10px] text-slate-400 font-normal">$USD</span>
                             </label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Payments" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Cash at Hand" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                             </div>
                         </div>
 
-                        <!-- Cash ($USD) -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
+                        <!-- Rand Cash at Hand -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> Cash</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-1 text-emerald-600"></i> Rand Cash at Hand</span>
+                                <span class="text-[10px] text-emerald-700 font-bold">ZAR (R)</span>
                             </label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Cash" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Debit Card -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-blue-600"></i> Debit Card</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Debit Card" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Credit Card -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-indigo-600"></i> Credit Card</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Credit Card" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Transfer -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-right-left text-cyan-600"></i> Transfer</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Transfer" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- $USD CBZ -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-violet-600"></i> $USD CBZ</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="$USD CBZ" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- ZIG CBZ -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> ZIG CBZ</span>
-                                <span class="text-[10px] text-amber-600 font-bold">ZiG</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">ZiG</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="ZIG CBZ" data-curr="ZIG" class="mode-input w-full pl-12 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- $USD AFC -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-landmark text-emerald-700"></i> $USD AFC</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="$USD AFC" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- ZIG AFC -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-teal-600"></i> ZIG AFC</span>
-                                <span class="text-[10px] text-amber-600 font-bold">ZiG</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">ZiG</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="ZIG AFC" data-curr="ZIG" class="mode-input w-full pl-12 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Credit -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-orange-600"></i> Credit</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Credit" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Charlmun -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-indigo-700"></i> Charlmun</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Charlmun" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Restaurant -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-utensils text-amber-700"></i> Restaurant</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Restaurant" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Physical Cash at Hand Section -->
-                    <div class="mt-6 pt-6 border-t border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-wallet text-emerald-600"></i> Physical Cash at Hand (Closing Drawer Count)
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <!-- USD Cash at Hand -->
-                            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 transition">
-                                <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> USD Cash at Hand</span>
-                                    <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                                </label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Cash at Hand" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                </div>
-                            </div>
-
-                            <!-- Rand Cash at Hand -->
-                            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 transition">
-                                <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> Rand Cash at Hand</span>
-                                    <span class="text-[10px] text-emerald-600 font-bold">ZAR (R)</span>
-                                </label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Rand Cash at Hand" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                </div>
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Rand Cash at Hand" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Expenses Section: Payments to Suppliers or Offloaders -->
-                    <div class="mt-6 pt-6 border-t border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-hand-holding-dollar text-indigo-600"></i> Cash Outflows / Expenses Paid by Teller (Suppliers & Offloaders)
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <!-- Paid to Suppliers / Offloaders (USD) -->
-                            <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition">
+                <!-- Section 2: Other Payment Modes -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-credit-card text-indigo-600"></i> Other Payment Modes (Bank, EcoCash, ZiG, etc.)
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- USD Bank / Transfers -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-indigo-600"></i> USD Bank / Transfer</span>
+                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Bank Transfer" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- ZiG Sales -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-purple-600"></i> ZiG Sales</span>
+                                <span class="text-[10px] text-purple-700 font-bold">ZiG</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">ZiG</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="ZiG Sales" data-curr="ZIG" class="mode-input w-full pl-12 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- EcoCash / Mobile Money -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-mobile-screen-button text-blue-600"></i> EcoCash / Mobile Money</span>
+                                <span class="text-[10px] text-emerald-700 font-bold">ZAR (R)</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
+                                <input type="number" step="0.01" min="0" value="0.00" data-mode="EcoCash" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Expenses (Suppliers & Offloaders with Notes) -->
+                <div class="pt-2">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-hand-holding-dollar text-rose-600"></i> Cash Outflows / Expenses Paid by Teller (Suppliers & Offloaders)
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Paid to Suppliers / Offloaders (USD) -->
+                        <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition space-y-3">
+                            <div>
                                 <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                                     <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
                                     <span class="text-[10px] text-slate-400 font-normal">$USD</span>
@@ -288,9 +212,15 @@
                                     <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
                                 </div>
                             </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-rose-800 mb-1">Note (Who was paid / Details)</label>
+                                <input type="text" id="note-Supplier/Offloader Payments" placeholder="e.g. Paid to John (Offloader)" class="w-full px-3 py-1.5 bg-white border border-rose-200 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                            </div>
+                        </div>
 
-                            <!-- Paid to Suppliers / Offloaders (ZAR/Rand) -->
-                            <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition">
+                        <!-- Paid to Suppliers / Offloaders (ZAR/Rand) -->
+                        <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition space-y-3">
+                            <div>
                                 <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
                                     <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
                                     <span class="text-[10px] text-rose-600 font-bold">ZAR (R)</span>
@@ -300,229 +230,269 @@
                                     <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments ZAR" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
                                 </div>
                             </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-rose-800 mb-1">Note (Who was paid / Details)</label>
+                                <input type="text" id="note-Supplier/Offloader Payments ZAR" placeholder="e.g. Paid to XYZ Supplier" class="w-full px-3 py-1.5 bg-white border border-rose-200 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Submission Summary & Button -->
-                    <div class="flex flex-col sm:flex-row items-center justify-between bg-indigo-50 p-4 rounded-xl border border-indigo-100 gap-4">
-                        <div>
-                            <span class="text-xs uppercase tracking-wider font-semibold text-indigo-800">Grand Total Converted to ZAR (R)</span>
-                            <div id="teller-total-preview" class="text-2xl font-black text-indigo-950">R0.00</div>
-                        </div>
-                        <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-paper-plane"></i> Submit Converted Figures
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Teller Reconciliation Result Card -->
-            <div id="teller-result-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-clipboard-check text-indigo-600"></i> Reconciliation & Variance Status (in ZAR)
-                </h3>
-                <div id="teller-reconciliation-feedback" class="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <i class="fa-regular fa-clock text-3xl mb-2"></i>
-                    <p class="text-sm">Submit your sales breakdown above, or wait for the manager to enter the expected system total.</p>
                 </div>
-            </div>
+
+                <!-- Section 4: Teller Activity & Borrowing Draft Notes (Independent Log) -->
+                <div class="pt-2">
+                    <div class="flex items-center justify-between mb-3 border-b pb-2">
+                        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-note-sticky text-amber-600"></i> Teller Activity & Borrowing Draft Notes
+                        </h3>
+                        <span class="text-xs text-slate-400">Track inter-teller loans/exchanges (Does not affect sales calculations)</span>
+                    </div>
+                    <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200 space-y-4">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="new-draft-note" placeholder="e.g. Borrowed $20 USD from Lilian for change" class="flex-grow px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            <button type="button" onclick="addDraftNote()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2 rounded-lg text-xs transition shadow-sm flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> Add Note / Borrow Log
+                            </button>
+                        </div>
+                        <div id="draft-notes-list" class="space-y-2">
+                            <p class="text-xs text-slate-400 italic">No activity notes recorded yet for this shift.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submission Summary Bar & Submit Button -->
+                <div class="pt-4 flex flex-col sm:flex-row items-center justify-between bg-indigo-50 p-5 rounded-xl border border-indigo-100 gap-4">
+                    <div>
+                        <span class="text-xs font-bold text-indigo-900 uppercase tracking-wide block">Calculated Total (Unified ZAR)</span>
+                        <div class="text-2xl font-black text-indigo-950" id="teller-total-preview">R0.00</div>
+                    </div>
+                    <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Submit Shift Figures
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <!-- Manager View Section -->
-        <div id="manager-view" class="space-y-6 hidden">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-100">
+        <!-- ==================== MANAGER / SUPERVISOR VIEW ==================== -->
+        <div id="view-manager" class="hidden space-y-6">
+            
+            <!-- PIN Protection Screen -->
+            <div id="manager-lock-screen" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-md border border-slate-200 text-center space-y-6 my-12">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner border border-indigo-100">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Supervisor Access Required</h2>
+                    <p class="text-xs text-slate-500 mt-1">Please enter the 6-digit supervisor PIN to access oversight controls.</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="password" id="manager-pin-input" maxlength="6" placeholder="Enter PIN (569596)" class="w-full text-center tracking-widest text-lg font-bold px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button type="button" onclick="verifyManagerPin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition shadow-md">
+                        Unlock Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- Unlocked Dashboard Content -->
+            <div id="manager-dashboard-content" class="hidden space-y-6">
+                <!-- Top Header / Rate Config Trigger -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900">Manager Oversight & Exchange Rate Config</h3>
-                        <p class="text-sm text-slate-500">Configure currency rates to ZAR and review teller consolidated submissions.</p>
+                        <span class="inline-block bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-1 rounded-full mb-1">Supervisor Oversight</span>
+                        <h2 class="text-xl font-bold text-slate-900">Branch Reconciliation & Audit Dashboard</h2>
+                        <p class="text-xs text-slate-500">Verify totals, calculate variances, and audit teller submissions.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button onclick="openRatesModal()" class="bg-amber-500 hover:bg-amber-600 text-indigo-950 font-semibold px-4 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
-                            <i class="fa-solid fa-gear"></i> Configure Exchange Rates
+                        <button type="button" onclick="openRateModal()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> Configure Rates
                         </button>
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm font-medium text-slate-600">Filter Date:</label>
-                            <input type="date" id="manager-filter-date" onchange="renderManagerDashboard()" class="px-3 py-2 border border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                        <button type="button" onclick="lockManagerView()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-rose-200 flex items-center gap-2">
+                            <i class="fa-solid fa-lock"></i> Lock
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Date & Branch Filter Bar -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Filter Date</label>
+                            <input type="date" id="manager-filter-date" onchange="renderManagerTable()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 text-xs font-semibold">
+                        <div class="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 text-indigo-900">
+                            Total Submissions: <span id="stat-total-subs" class="font-bold text-sm">0</span>
+                        </div>
+                        <div class="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 text-emerald-900">
+                            Total ZAR Collected: <span id="stat-total-zar" class="font-bold text-sm">R0.00</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Submissions Table -->
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase font-bold tracking-wider">
-                                <th class="p-3.5 rounded-l-xl">Teller / ID</th>
-                                <th class="p-3.5">Date</th>
-                                <th class="p-3.5">Declared Total (ZAR)</th>
-                                <th class="p-3.5">Expected System Total (ZAR)</th>
-                                <th class="p-3.5">Variance Status</th>
-                                <th class="p-3.5 rounded-r-xl text-right">Actions / Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="manager-submissions-list" class="divide-y divide-slate-100 text-sm">
-                            <tr>
-                                <td colspan="6" class="text-center py-8 text-slate-400">No submissions found.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <th class="py-3 px-4">Teller Name</th>
+                                    <th class="py-3 px-4">Branch</th>
+                                    <th class="py-3 px-4">Declared Total (ZAR)</th>
+                                    <th class="py-3 px-4">Expected System Total (ZAR)</th>
+                                    <th class="py-3 px-4">Variance Status</th>
+                                    <th class="py-3 px-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manager-table-body" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
-
     </main>
 
-    <!-- Exchange Rate Configuration Modal -->
-    <div id="rates-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-6">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-900">Configure Currency Exchange Rates</h3>
-                <button onclick="openRatesModal()" class="text-slate-400 hover:text-slate-600">
+    <!-- ==================== BREAKDOWN & VARIANCE MODAL ==================== -->
+    <div id="breakdown-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-indigo-900 text-white p-4 flex justify-between items-center">
+                <h3 id="breakdown-modal-title" class="font-bold text-sm">Detailed Breakdown</h3>
+                <button type="button" onclick="closeBreakdownModal()" class="text-indigo-200 hover:text-white p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500">Set how many South African Rands (ZAR) equal 1 unit of USD and ZiG. These rates convert all figures to a single grand total.</p>
+            <div class="p-6 overflow-y-auto space-y-4 flex-grow" id="breakdown-modal-content">
+                <!-- Content populated dynamically -->
+            </div>
 
-            <div class="space-y-4">
+            <!-- Expected Total Input & PDF Export for Manager -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+                <div class="flex items-center gap-2">
+                    <input type="number" step="0.01" id="expected-total-input" placeholder="Enter Expected System Total (ZAR)" class="flex-grow px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button type="button" onclick="saveExpectedTotalFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-sm">
+                        Save Expected
+                    </button>
+                </div>
+                <div class="flex justify-between items-center pt-2">
+                    <button type="button" onclick="exportBreakdownPDF()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-pdf"></i> Export Breakdown & Variance PDF
+                    </button>
+                    <button type="button" onclick="closeBreakdownModal()" class="text-slate-500 hover:text-slate-700 text-xs font-semibold px-4 py-2">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== RATE CONFIG MODAL ==================== -->
+    <div id="rate-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 space-y-5">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-sliders text-indigo-600"></i> Configure Exchange Rates</h3>
+                <button type="button" onclick="closeRateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-4 text-xs">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">1 USD to ZAR Rate ($)</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                        <input type="number" step="0.0001" id="rate-usd" value="18.50" class="w-full pl-8 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
-                    </div>
+                    <label class="block font-bold text-slate-700 mb-1">1 USD to ZAR Rate ($)</label>
+                    <input type="number" step="0.01" id="config-usd-rate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
-
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">1 ZiG to ZAR Rate (ZiG)</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                        <input type="number" step="0.0001" id="rate-zig" value="1.40" class="w-full pl-8 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
-                    </div>
+                    <label class="block font-bold text-slate-700 mb-1">1 ZiG to ZAR Rate (ZiG factor)</label>
+                    <input type="number" step="0.001" id="config-zig-rate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <span class="text-[10px] text-slate-400 mt-1 block">e.g., if 1 Rand = 2.5 ZiG, enter 0.4 (1 / 2.5)</span>
                 </div>
             </div>
-
-            <div class="flex justify-end gap-3 pt-2">
-                <button onclick="openRatesModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
-                <button onclick="saveExchangeRates()" class="px-5 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-sm">Save Rates</button>
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button type="button" onclick="closeRateModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="button" onclick="saveRatesFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-sm">Save Rates</button>
             </div>
         </div>
     </div>
 
-    <!-- Role Switch Modal -->
-    <div id="role-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-6">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-900">Configure User & Role</h3>
-                <button onclick="toggleRoleModal()" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Select Role Type</label>
-                    <select id="modal-role-select" onchange="onRoleTypeChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
-                        <option value="teller">Teller</option>
-                        <option value="manager">Manager / Supervisor</option>
-                    </select>
-                </div>
-
-                <div id="teller-name-group">
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Select Teller Name</label>
-                    <select id="modal-teller-name" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50">
-                        <option value="Lilian Chidia">Lilian Chidia</option>
-                        <option value="Rumbidzai Makadho">Rumbidzai Makadho</option>
-                        <option value="Panashe Makandiwona">Panashe Makandiwona</option>
-                        <option value="Tinotenda Chikwanda">Tinotenda Chikwanda</option>
-                    </select>
-                </div>
-
-                <!-- Manager PIN Access Control Group -->
-                <div id="manager-pin-group" class="hidden">
-                    <label class="block text-xs font-bold text-rose-800 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-lock text-rose-600"></i> Supervisor PIN Code
-                    </label>
-                    <input type="password" id="manager-pin-input" placeholder="Enter 4-digit PIN (default: 1234)" class="w-full px-3 py-2.5 border border-rose-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none bg-rose-50/50">
-                    <p class="text-[11px] text-slate-400 mt-1">Default security PIN is <strong class="text-slate-600">1234</strong>.</p>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-2">
-                <button onclick="toggleRoleModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
-                <button onclick="saveRoleConfig()" class="px-5 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-sm">Save & Apply</button>
-            </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-xs">
+        <i id="toast-icon" class="fa-solid fa-check text-emerald-400 text-base"></i>
+        <div>
+            <p id="toast-title" class="font-bold">Success</p>
+            <p id="toast-msg" class="text-slate-300 text-[11px]"></p>
         </div>
     </div>
 
-    <!-- Breakdown Details Modal -->
-    <div id="breakdown-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-6">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-900" id="breakdown-modal-title">Payment Mode Breakdown</h3>
-                <button onclick="closeBreakdownModal()" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div id="breakdown-modal-content" class="space-y-3 max-h-96 overflow-y-auto pr-1">
-                <!-- Populated dynamically -->
-            </div>
-            <div class="flex justify-end pt-2">
-                <button onclick="closeBreakdownModal()" class="px-5 py-2 text-sm font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl transition">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Notification Modal -->
-    <div id="toast-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-200 text-center space-y-4">
-            <div id="toast-icon-container" class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <h4 id="toast-title" class="text-base font-bold text-slate-900">Success</h4>
-            <p id="toast-message" class="text-sm text-slate-500">Operation completed successfully.</p>
-            <button onclick="closeToast()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition">OK</button>
-        </div>
-    </div>
-
-    <!-- App Logic Script -->
+    <!-- Application Script -->
     <script>
-        let submissionsCache = [];
-        let globalRates = { USD: 18.50, ZIG: 1.40 };
-
+        // Global State & Configuration
         window.appState = {
             role: 'teller',
             tellerName: 'Lilian Chidia'
         };
 
+        window.globalRates = {
+            USD: 18.50,
+            ZIG: 0.40
+        };
+
+        window.submissionsCache = [];
+        window.draftNotesCache = [];
+        let activeModalRecordId = null;
+
+        // Initialize App on Window Load
         window.onload = function() {
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('submission-date').value = todayStr;
             document.getElementById('manager-filter-date').value = todayStr;
-            document.getElementById('current-date-str').textContent = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
             document.querySelectorAll('.mode-input').forEach(input => {
                 input.addEventListener('input', calculateTellerTotalPreview);
             });
 
-            loadLocalSubmissions();
-            loadLocalRates();
+            loadLocalData();
             updateRoleUI();
+            calculateTellerTotalPreview();
 
+            // Listen for storage events for cloud sync simulation across tabs/devices
             window.addEventListener('storage', (e) => {
                 if (e.key === 'charlmun_submissions') loadLocalSubmissions();
                 if (e.key === 'charlmun_rates') loadLocalRates();
+                if (e.key === 'charlmun_draft_notes') loadLocalDraftNotes();
             });
         };
+
+        function loadLocalData() {
+            loadLocalRates();
+            loadLocalSubmissions();
+            loadLocalDraftNotes();
+        }
+
+        function loadLocalRates() {
+            try {
+                const stored = localStorage.getItem('charlmun_rates');
+                if (stored) {
+                    window.globalRates = JSON.parse(stored);
+                }
+            } catch (err) {}
+            document.getElementById('rate-usd-display').textContent = window.globalRates.USD.toFixed(2);
+            document.getElementById('rate-zig-display').textContent = window.globalRates.ZIG.toFixed(3);
+        }
+
+        function saveLocalRates() {
+            try {
+                localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
+                window.dispatchEvent(new Event('storage'));
+            } catch (err) {}
+        }
 
         function loadLocalSubmissions() {
             try {
                 const stored = localStorage.getItem('charlmun_submissions');
                 submissionsCache = stored ? JSON.parse(stored) : [];
-                onSubmissionsUpdated();
             } catch (err) {
                 submissionsCache = [];
-                onSubmissionsUpdated();
+            }
+            if (window.appState.role === 'manager') {
+                renderManagerTable();
             }
         }
 
@@ -533,64 +503,140 @@
             } catch (err) {}
         }
 
-        function loadLocalRates() {
+        function loadLocalDraftNotes() {
             try {
-                const stored = localStorage.getItem('charlmun_rates');
-                if (stored) {
-                    globalRates = JSON.parse(stored);
-                    document.getElementById('rate-usd').value = globalRates.USD;
-                    document.getElementById('rate-zig').value = globalRates.ZIG;
-                }
-            } catch (err) {}
-            updateRateBadge();
-            calculateTellerTotalPreview();
+                const dateVal = document.getElementById('submission-date').value;
+                const tellerName = window.appState.tellerName;
+                const key = `charlmun_draft_${dateVal}_${tellerName}`;
+                const stored = localStorage.getItem(key);
+                draftNotesCache = stored ? JSON.parse(stored) : [];
+                renderDraftNotes();
+            } catch (err) {
+                draftNotesCache = [];
+                renderDraftNotes();
+            }
         }
 
-        function saveLocalRates() {
+        function saveLocalDraftNotes() {
             try {
-                localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
-                window.dispatchEvent(new Event('storage'));
+                const dateVal = document.getElementById('submission-date').value;
+                const tellerName = window.appState.tellerName;
+                const key = `charlmun_draft_${dateVal}_${tellerName}`;
+                localStorage.setItem(key, JSON.stringify(draftNotesCache));
             } catch (err) {}
         }
 
-        function updateRateBadge() {
-            document.getElementById('rate-summary-text').textContent = `Rates: USD=R${globalRates.USD}, ZiG=R${globalRates.ZIG}`;
+        // Role Switching Logic
+        window.switchRole = function(role) {
+            window.appState.role = role;
+            if (role === 'manager') {
+                document.getElementById('btn-role-manager').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5";
+                document.getElementById('btn-role-teller').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5";
+                
+                document.getElementById('view-teller').classList.add('hidden');
+                document.getElementById('view-manager').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-role-teller').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5";
+                document.getElementById('btn-role-manager').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5";
+                
+                document.getElementById('view-manager').classList.add('hidden');
+                document.getElementById('view-teller').classList.remove('hidden');
+            }
+        };
+
+        window.updateRoleUI = function() {
+            // Initial check
+        };
+
+        window.onTellerChange = function(name) {
+            window.appState.tellerName = name;
+            loadLocalDraftNotes();
+        };
+
+        // Teller Activity & Borrowing Draft Notes Functions
+        window.addDraftNote = function() {
+            const input = document.getElementById('new-draft-note');
+            const text = input.value.trim();
+            if (!text) return;
+
+            draftNotesCache.push({
+                id: Date.now(),
+                text: text,
+                returned: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            input.value = '';
+            saveLocalDraftNotes();
+            renderDraftNotes();
+        };
+
+        window.toggleDraftReturn = function(id) {
+            const note = draftNotesCache.find(n => n.id === id);
+            if (note) {
+                note.returned = !note.returned;
+                saveLocalDraftNotes();
+                renderDraftNotes();
+            }
+        };
+
+        window.deleteDraftNote = function(id) {
+            draftNotesCache = draftNotesCache.filter(n => n.id !== id);
+            saveLocalDraftNotes();
+            renderDraftNotes();
+        };
+
+        function renderDraftNotes() {
+            const container = document.getElementById('draft-notes-list');
+            if (!draftNotesCache || draftNotesCache.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">No activity notes recorded yet for this shift.</p>`;
+                return;
+            }
+
+            container.innerHTML = draftNotesCache.map(note => `
+                <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-200 text-xs shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${note.returned ? 'checked' : ''} onchange="toggleDraftReturn(${note.id})" class="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer">
+                        <div>
+                            <span class="${note.returned ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}">${note.text}</span>
+                            <span class="block text-[10px] text-slate-400">${note.timestamp} ${note.returned ? '• <strong class="text-emerald-600">Returned / Settled</strong>' : '• <strong class="text-amber-600">Pending Return</strong>'}</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="deleteDraftNote(${note.id})" class="text-slate-400 hover:text-rose-600 p-1" title="Delete Note">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
         }
 
-        function onSubmissionsUpdated() {
-            renderManagerDashboard();
-            renderTellerFeedback();
-        }
-
+        // Live Preview Calculator
         function calculateTellerTotalPreview() {
             let totalZar = 0;
             document.querySelectorAll('.mode-input').forEach(input => {
-                const val = parseFloat(input.value) || 0;
                 const curr = input.getAttribute('data-curr');
                 const mode = input.getAttribute('data-mode');
+                const val = parseFloat(input.value) || 0;
                 
-                let modeValZar = 0;
-                if (curr === 'USD') {
-                    modeValZar = val * globalRates.USD;
-                } else if (curr === 'ZIG') {
-                    modeValZar = val * globalRates.ZIG;
-                } else if (curr === 'ZAR') {
-                    modeValZar = val;
+                let zarEq = 0;
+                if (curr === 'USD') zarEq = val * globalRates.USD;
+                if (curr === 'ZIG') zarEq = val * globalRates.ZIG;
+                if (curr === 'ZAR') zarEq = val;
+
+                // Subtract supplier/offloader expenses from total
+                if (mode.includes('Supplier/Offloader')) {
+                    zarEq = -Math.abs(zarEq);
                 }
 
-                // If it's a cash payout/expense to suppliers or offloaders, it reduces cash/takings in till
-                if (mode.includes('Supplier/Offloader')) {
-                    totalZar -= modeValZar;
-                } else {
-                    totalZar += modeValZar;
-                }
+                totalZar += zarEq;
             });
             document.getElementById('teller-total-preview').textContent = `R${totalZar.toFixed(2)}`;
         }
 
+        // Submit Sales Handler
         window.submitSales = function(event) {
             event.preventDefault();
             const dateVal = document.getElementById('submission-date').value;
+            const branch = document.getElementById('branch-selector').value;
             const tellerName = window.appState.tellerName;
             
             const breakdown = {};
@@ -607,10 +653,16 @@
                 if (curr === 'ZAR') zarEquivalent = val;
 
                 if (mode.includes('Supplier/Offloader')) {
-                    zarEquivalent = -Math.abs(zarEquivalent); // recorded as outgoing expense
+                    zarEquivalent = -Math.abs(zarEquivalent);
                 }
 
-                breakdown[mode] = { raw: val, currency: curr, zar: zarEquivalent };
+                let note = '';
+                const noteInput = document.getElementById(`note-${mode}`);
+                if (noteInput) {
+                    note = noteInput.value.trim();
+                }
+
+                breakdown[mode] = { raw: val, currency: curr, zar: zarEquivalent, note: note };
                 totalZar += zarEquivalent;
             });
 
@@ -621,11 +673,13 @@
             const recordData = {
                 id: recordId,
                 date: dateVal,
+                branch: branch,
                 tellerName: tellerName,
                 breakdown: breakdown,
                 declaredTotalZar: totalZar,
                 expectedTotalZar: expectedTotalZar,
                 ratesUsed: { ...globalRates },
+                draftNotes: [...draftNotesCache],
                 updatedAt: new Date().toISOString()
             };
 
@@ -637,93 +691,71 @@
             }
 
             saveLocalSubmissions();
-            onSubmissionsUpdated();
-            showToast("Success", "Sales submitted and converted to ZAR successfully!");
+            showToast("Success", "Shift breakdown submitted successfully (cloud synced)!");
         };
 
-        window.saveExpectedTotal = function(recordId) {
-            const inputEl = document.getElementById(`expected_input_${recordId}`);
-            if (!inputEl) return;
-            const expectedVal = parseFloat(inputEl.value);
-            if (isNaN(expectedVal)) {
-                showToast("Error", "Please enter a valid expected total in ZAR.", "error");
-                return;
+        // Manager PIN Verification
+        window.verifyManagerPin = function() {
+            const pin = document.getElementById('manager-pin-input').value;
+            if (pin === '569596') {
+                document.getElementById('manager-lock-screen').classList.add('hidden');
+                document.getElementById('manager-dashboard-content').classList.remove('hidden');
+                document.getElementById('manager-pin-input').value = '';
+                renderManagerTable();
+                showToast("Access Granted", "Welcome to Supervisor Oversight");
+            } else {
+                showToast("Access Denied", "Incorrect Supervisor PIN", "error");
+                document.getElementById('manager-pin-input').value = '';
             }
-
-            const record = submissionsCache.find(s => s.id === recordId);
-            if (!record) return;
-
-            record.expectedTotalZar = expectedVal;
-            record.updatedAt = new Date().toISOString();
-
-            saveLocalSubmissions();
-            onSubmissionsUpdated();
-            showToast("Updated", "Expected system total (ZAR) saved successfully.");
         };
 
-        window.saveExchangeRates = function() {
-            const usdRate = parseFloat(document.getElementById('rate-usd').value);
-            const zigRate = parseFloat(document.getElementById('rate-zig').value);
-
-            if (isNaN(usdRate) || isNaN(zigRate) || usdRate <= 0 || zigRate <= 0) {
-                showToast("Error", "Please enter valid positive exchange rates.", "error");
-                return;
-            }
-
-            globalRates = { USD: usdRate, ZIG: zigRate };
-            updateRateBadge();
-            calculateTellerTotalPreview();
-            openRatesModal();
-            saveLocalRates();
-            showToast("Success", "Exchange rates updated successfully!");
+        window.lockManagerView = function() {
+            document.getElementById('manager-dashboard-content').classList.add('hidden');
+            document.getElementById('manager-lock-screen').classList.remove('hidden');
         };
 
-        function renderManagerDashboard() {
-            const tbody = document.getElementById('manager-submissions-list');
+        // Render Manager Table
+        function renderManagerTable() {
             const filterDate = document.getElementById('manager-filter-date').value;
-            const filtered = submissionsCache.filter(s => !filterDate || s.date === filterDate);
+            const tbody = document.getElementById('manager-table-body');
+            
+            const filtered = submissionsCache.filter(s => s.date === filterDate);
+            document.getElementById('stat-total-subs').textContent = filtered.length;
+            
+            let sumZar = filtered.reduce((acc, curr) => acc + (curr.declaredTotalZar || 0), 0);
+            document.getElementById('stat-total-zar').textContent = `R${sumZar.toFixed(2)}`;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No submissions found for ${filterDate || 'selected date'}.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic">No submissions found for ${filterDate}.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(item => {
-                const declared = item.declaredTotalZar || 0;
-                const expected = item.expectedTotalZar;
-                let varianceHtml = `<span class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">Pending Manager Input</span>`;
-                
+            tbody.innerHTML = filtered.map(record => {
+                const declared = record.declaredTotalZar || 0;
+                const expected = record.expectedTotalZar;
+                let varianceBadge = `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold">Pending Expected</span>`;
+
                 if (expected !== null && expected !== undefined) {
                     const variance = declared - expected;
                     if (Math.abs(variance) < 0.01) {
-                        varianceHtml = `<span class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 w-max"><i class="fa-solid fa-check"></i> Balanced (R0.00)</span>`;
+                        varianceBadge = `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">Balanced (R0.00)</span>`;
                     } else if (variance < 0) {
-                        varianceHtml = `<span class="text-xs bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 w-max"><i class="fa-solid fa-triangle-exclamation"></i> Short by R${Math.abs(variance).toFixed(2)}</span>`;
+                        varianceBadge = `<span class="px-2.5 py-1 bg-rose-50 text-rose-700 rounded-full text-[10px] font-bold">Short by R${Math.abs(variance).toFixed(2)}</span>`;
                     } else {
-                        varianceHtml = `<span class="text-xs bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 w-max"><i class="fa-solid fa-arrow-up"></i> Over by R${variance.toFixed(2)}</span>`;
+                        varianceBadge = `<span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-bold">Over by R${variance.toFixed(2)}</span>`;
                     }
                 }
 
                 return `
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3.5 font-semibold text-slate-900">${item.tellerName}</td>
-                        <td class="p-3.5 text-slate-600">${item.date}</td>
-                        <td class="p-3.5 font-bold text-indigo-900">R${declared.toFixed(2)}</td>
-                        <td class="p-3.5">
-                            <div class="flex items-center gap-2">
-                                <div class="relative w-32">
-                                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs">R</span>
-                                    <input type="number" step="0.01" id="expected_input_${item.id}" value="${expected !== null && expected !== undefined ? expected : ''}" placeholder="0.00" class="w-full pl-6 pr-2 py-1.5 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                                </div>
-                                <button onclick="saveExpectedTotal('${item.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm" title="Save Expected Total">
-                                    <i class="fa-solid fa-floppy-disk"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="p-3.5">${varianceHtml}</td>
-                        <td class="p-3.5 text-right">
-                            <button onclick="openBreakdownModal('${item.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">
-                                <i class="fa-solid fa-eye mr-1"></i> Breakdown
+                        <td class="py-3 px-4 font-bold text-slate-900">${record.tellerName}</td>
+                        <td class="py-3 px-4 text-slate-500">${record.branch || 'Checheche Main'}</td>
+                        <td class="py-3 px-4 font-bold text-indigo-900">R${declared.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-slate-600">${expected !== null && expected !== undefined ? 'R' + expected.toFixed(2) : 'Not Entered'}</td>
+                        <td class="py-3 px-4">${varianceBadge}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button type="button" onclick="openBreakdownModal('${record.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition border border-indigo-200">
+                                <i class="fa-solid fa-eye mr-1"></i> Review & Audit
                             </button>
                         </td>
                     </tr>
@@ -731,166 +763,54 @@
             }).join('');
         }
 
-        function renderTellerFeedback() {
-            const container = document.getElementById('teller-reconciliation-feedback');
-            const dateVal = document.getElementById('submission-date').value;
-            const tellerName = window.appState.tellerName;
-            
-            const record = submissionsCache.find(s => s.date === dateVal && s.tellerName === tellerName);
-
-            if (!record) {
-                container.innerHTML = `
-                    <i class="fa-regular fa-clock text-3xl mb-2 text-slate-400"></i>
-                    <p class="text-sm text-slate-500">No submission recorded for you on ${dateVal}. Submit your breakdown above.</p>
-                `;
-                return;
-            }
-
-            const declared = record.declaredTotalZar || 0;
-            const expected = record.expectedTotalZar;
-
-            if (expected === null || expected === undefined) {
-                container.innerHTML = `
-                    <div class="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-xl text-left space-y-2">
-                        <div class="flex items-center gap-2 font-bold text-base">
-                            <i class="fa-solid fa-hourglass-half text-amber-600"></i> Submission Received - Pending Manager Review
-                        </div>
-                        <p class="text-sm text-amber-800">Your converted grand total of <strong class="font-bold">R${declared.toFixed(2)}</strong> has been recorded. Once the manager enters the expected system total in ZAR, your shortage/variance status will update here instantly.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const variance = declared - expected;
-            let statusCardClass = "bg-emerald-50 border-emerald-200 text-emerald-900";
-            let iconHtml = '<i class="fa-solid fa-circle-check text-emerald-600 text-2xl"></i>';
-            let titleText = "Shift Balanced Successfully!";
-            let descText = `Your converted sales (R${declared.toFixed(2)}) match the expected system total (R${expected.toFixed(2)}).`;
-
-            if (Math.abs(variance) >= 0.01) {
-                if (variance < 0) {
-                    statusCardClass = "bg-rose-50 border-rose-200 text-rose-900";
-                    iconHtml = '<i class="fa-solid fa-triangle-exclamation text-rose-600 text-2xl"></i>';
-                    titleText = `Shortage Detected: Short by R${Math.abs(variance).toFixed(2)}`;
-                    descText = `Your declared total (R${declared.toFixed(2)}) is less than the expected system total (R${expected.toFixed(2)}).`;
-                } else {
-                    statusCardClass = "bg-blue-50 border-blue-200 text-blue-900";
-                    iconHtml = '<i class="fa-solid fa-circle-info text-blue-600 text-2xl"></i>';
-                    titleText = `Overage Detected: Over by R${variance.toFixed(2)}`;
-                    descText = `Your declared total (R${declared.toFixed(2)}) exceeds the expected system total (R${expected.toFixed(2)}).`;
-                }
-            }
-
-            container.innerHTML = `
-                <div class="${statusCardClass} border p-5 rounded-xl text-left space-y-3 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 bg-white rounded-lg shadow-sm">
-                            ${iconHtml}
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-lg">${titleText}</h4>
-                            <p class="text-xs opacity-80">Shift Date: ${record.date} | Teller: ${record.tellerName}</p>
-                        </div>
-                    </div>
-                    <p class="text-sm">${descText}</p>
-                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-black/10 text-xs font-semibold">
-                        <div>Declared: R${declared.toFixed(2)}</div>
-                        <div>Expected: R${expected.toFixed(2)}</div>
-                        <div>Variance: R${variance.toFixed(2)}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        window.openRatesModal = function() {
-            document.getElementById('rates-modal').classList.toggle('hidden');
-        };
-
-        window.toggleRoleModal = function() {
-            const modal = document.getElementById('role-modal');
-            modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden')) {
-                document.getElementById('modal-role-select').value = window.appState.role;
-                document.getElementById('modal-teller-name').value = window.appState.tellerName;
-                onRoleTypeChange();
-            }
-        };
-
-        window.onRoleTypeChange = function() {
-            const role = document.getElementById('modal-role-select').value;
-            const tellerGroup = document.getElementById('teller-name-group');
-            const pinGroup = document.getElementById('manager-pin-group');
-
-            if (role === 'manager') {
-                tellerGroup.classList.add('hidden');
-                pinGroup.classList.remove('hidden');
-            } else {
-                tellerGroup.classList.remove('hidden');
-                pinGroup.classList.add('hidden');
-            }
-        };
-
-        window.saveRoleConfig = function() {
-            const role = document.getElementById('modal-role-select').value;
-            
-            if (role === 'manager') {
-                const pin = document.getElementById('manager-pin-input').value;
-                if (pin !== '569596') {
-                    showToast("Access Denied", "Incorrect supervisor PIN code!", "error");
-                    return;
-                }
-            }
-
-            window.appState.role = role;
-            if (role === 'teller') {
-                window.appState.tellerName = document.getElementById('modal-teller-name').value;
-            }
-
-            document.getElementById('manager-pin-input').value = '';
-            toggleRoleModal();
-            updateRoleUI();
-            showToast("Role Switched", `Switched to ${role === 'manager' ? 'Manager Dashboard' : 'Teller: ' + window.appState.tellerName}`);
-        };
-
-        function updateRoleUI() {
-            const role = window.appState.role;
-            const roleTitle = document.getElementById('role-title');
-            const tellerView = document.getElementById('teller-view');
-            const managerView = document.getElementById('manager-view');
-
-            if (role === 'manager') {
-                roleTitle.innerHTML = `<i class="fa-solid fa-user-shield text-indigo-600"></i> Manager Dashboard (Oversight)`;
-                tellerView.classList.add('hidden');
-                managerView.classList.remove('hidden');
-                renderManagerDashboard();
-            } else {
-                roleTitle.innerHTML = `<i class="fa-solid fa-cash-register text-indigo-600"></i> Teller Portal — <span class="text-indigo-600 font-semibold">${window.appState.tellerName}</span>`;
-                managerView.classList.add('hidden');
-                tellerView.classList.remove('hidden');
-                renderTellerFeedback();
-            }
-        }
-
+        // Breakdown Modal Actions
         window.openBreakdownModal = function(recordId) {
             const record = submissionsCache.find(s => s.id === recordId);
             if (!record || !record.breakdown) return;
 
+            activeModalRecordId = recordId;
             document.getElementById('breakdown-modal-title').textContent = `Breakdown for ${record.tellerName} (${record.date})`;
-            const content = document.getElementById('breakdown-modal-content');
+            document.getElementById('expected-total-input').value = record.expectedTotalZar !== null && record.expectedTotalZar !== undefined ? record.expectedTotalZar : '';
             
+            const content = document.getElementById('breakdown-modal-content');
+            const declared = record.declaredTotalZar || 0;
+            const expected = record.expectedTotalZar;
+            
+            let notesHtml = '';
+            if (record.draftNotes && record.draftNotes.length > 0) {
+                notesHtml = `
+                    <div class="mt-4 pt-3 border-t border-slate-200">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Teller Activity & Borrowing Draft Notes</span>
+                        <div class="space-y-1.5">
+                            ${record.draftNotes.map(n => `
+                                <div class="text-xs p-2 bg-slate-50 rounded border border-slate-200 flex justify-between items-center">
+                                    <span>${n.text}</span>
+                                    <span class="font-bold ${n.returned ? 'text-emerald-600' : 'text-amber-600'}">${n.returned ? 'Returned / Settled' : 'Pending'}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             content.innerHTML = Object.entries(record.breakdown).map(([mode, data]) => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200 text-sm">
                     <div>
                         <span class="font-medium text-slate-700">${mode}</span>
-                        <div class="text-[11px] text-slate-400">${data.raw} ${data.currency}</div>
+                        <div class="text-[11px] text-slate-400">${data.raw} ${data.currency} ${data.note ? '<br><span class="text-rose-700 font-medium">Note: ' + data.note + '</span>' : ''}</div>
                     </div>
                     <span class="font-bold text-slate-900">R${Number(data.zar).toFixed(2)}</span>
                 </div>
             `).join('') + `
                 <div class="flex justify-between items-center p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-sm font-bold text-indigo-950 mt-2">
-                    <span>Grand Total (ZAR)</span>
-                    <span>R${(record.declaredTotalZar || 0).toFixed(2)}</span>
+                    <span>Declared Grand Total (ZAR)</span>
+                    <span>R${declared.toFixed(2)}</span>
                 </div>
+                <div class="flex justify-between items-center p-3 bg-slate-100 rounded-xl border border-slate-200 text-sm font-bold text-slate-900">
+                    <span>Expected System Total (ZAR)</span>
+                    <span>${expected !== null && expected !== undefined ? 'R' + expected.toFixed(2) : 'Not Entered'}</span>
+                </div>
+                ${notesHtml}
             `;
 
             document.getElementById('breakdown-modal').classList.remove('hidden');
@@ -898,27 +818,145 @@
 
         window.closeBreakdownModal = function() {
             document.getElementById('breakdown-modal').classList.add('hidden');
+            activeModalRecordId = null;
         };
 
-        window.showToast = function(title, message, type = 'success') {
-            document.getElementById('toast-title').textContent = title;
-            document.getElementById('toast-message').textContent = message;
-            const iconContainer = document.getElementById('toast-icon-container');
-            if (type === 'error') {
-                iconContainer.className = "w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl";
-                iconContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else {
-                iconContainer.className = "w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl";
-                iconContainer.innerHTML = '<i class="fa-solid fa-check"></i>';
+        window.saveExpectedTotalFromModal = function() {
+            if (!activeModalRecordId) return;
+            const val = parseFloat(document.getElementById('expected-total-input').value);
+            if (isNaN(val)) {
+                showToast("Error", "Please enter a valid expected total", "error");
+                return;
             }
-            document.getElementById('toast-modal').classList.remove('hidden');
+
+            const record = submissionsCache.find(s => s.id === activeModalRecordId);
+            if (record) {
+                record.expectedTotalZar = val;
+                saveLocalSubmissions();
+                renderManagerTable();
+                openBreakdownModal(activeModalRecordId);
+                showToast("Success", "Expected total saved and variance calculated!");
+            }
         };
 
-        window.closeToast = function() {
-            document.getElementById('toast-modal').classList.add('hidden');
+        // Rate Configuration Modal Actions
+        window.openRateModal = function() {
+            document.getElementById('config-usd-rate').value = globalRates.USD;
+            document.getElementById('config-zig-rate').value = globalRates.ZIG;
+            document.getElementById('rate-modal').classList.remove('hidden');
         };
 
-        document.getElementById('submission-date').addEventListener('change', renderTellerFeedback);
+        window.closeRateModal = function() {
+            document.getElementById('rate-modal').classList.add('hidden');
+        };
+
+        window.saveRatesFromModal = function() {
+            const usd = parseFloat(document.getElementById('config-usd-rate').value);
+            const zig = parseFloat(document.getElementById('config-zig-rate').value);
+            
+            if (isNaN(usd) || isNaN(zig)) {
+                showToast("Error", "Please enter valid exchange rates", "error");
+                return;
+            }
+
+            globalRates.USD = usd;
+            globalRates.ZIG = zig;
+            saveLocalRates();
+            loadLocalRates();
+            calculateTellerTotalPreview();
+            closeRateModal();
+            showToast("Success", "Exchange rates updated successfully!");
+        };
+
+        // PDF Export of Breakdown and Variance
+        window.exportBreakdownPDF = function() {
+            if (!activeModalRecordId) return;
+            const record = submissionsCache.find(s => s.id === activeModalRecordId);
+            if (!record) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("Charlmun Enterprises - Reconciliation Report", 14, 20);
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Branch: ${record.branch || 'Checheche Main'}`, 14, 28);
+            doc.text(`Teller Name: ${record.tellerName}`, 14, 34);
+            doc.text(`Date: ${record.date}`, 14, 40);
+
+            let y = 50;
+            doc.setFont("helvetica", "bold");
+            doc.text("Payment Mode / Expense", 14, y);
+            doc.text("Raw Value", 110, y);
+            doc.text("ZAR Equivalent", 160, y);
+            doc.line(14, y + 2, 196, y + 2);
+
+            y += 8;
+            doc.setFont("helvetica", "normal");
+
+            Object.entries(record.breakdown).forEach(([mode, data]) => {
+                doc.text(mode, 14, y);
+                doc.text(`${data.raw} ${data.currency}`, 110, y);
+                doc.text(`R${Number(data.zar).toFixed(2)}`, 160, y);
+                if (data.note) {
+                    y += 5;
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 50, 50);
+                    doc.text(`Note: ${data.note}`, 18, y);
+                    doc.setFontSize(10);
+                    doc.setTextColor(0, 0, 0);
+                }
+                y += 8;
+            });
+
+            doc.line(14, y, 196, y);
+            y += 8;
+            doc.setFont("helvetica", "bold");
+            doc.text("Declared Grand Total (ZAR):", 14, y);
+            doc.text(`R${(record.declaredTotalZar || 0).toFixed(2)}`, 160, y);
+
+            y += 8;
+            const expected = record.expectedTotalZar;
+            doc.text("Expected System Total (ZAR):", 14, y);
+            doc.text(expected !== null && expected !== undefined ? `R${expected.toFixed(2)}` : 'Not Entered', 160, y);
+
+            if (expected !== null && expected !== undefined) {
+                y += 8;
+                const variance = (record.declaredTotalZar || 0) - expected;
+                let varText = variance === 0 ? "Balanced (R0.00)" : variance < 0 ? `Short by R${Math.abs(variance).toFixed(2)}` : `Over by R${variance.toFixed(2)}`;
+                doc.text("Variance Status:", 14, y);
+                doc.text(varText, 160, y);
+            }
+
+            doc.save(`Reconciliation_${record.tellerName}_${record.date}.pdf`);
+            showToast("Success", "Breakdown & Variance PDF exported successfully!");
+        };
+
+        // Toast Notification Helper
+        function showToast(title, msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-msg').textContent = msg;
+            
+            const icon = document.getElementById('toast-icon');
+            if (type === 'error') {
+                icon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-base";
+            } else {
+                icon.className = "fa-solid fa-check text-emerald-400 text-base";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        document.getElementById('submission-date').addEventListener('change', () => {
+            loadLocalDraftNotes();
+        });
     </script>
 </body>
 </html>
