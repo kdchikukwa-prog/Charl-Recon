@@ -3,1007 +3,894 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charlmun ERP - Teller Reconciliation & Expense Portal</title>
-    <!-- Tailwind CSS -->
+    <title>Charlmun Enterprises - Teller Reconciliation Portal</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- jsPDF for PDF Exports -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2pdf Library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Firebase App (Modular SDK) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, set, get, child, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      // Firebase Configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyCwDGTVCFVITiieVPQ4GrnTjYTp47zRT4k",
+        authDomain: "charltellerportal.firebaseapp.com",
+        databaseURL: "https://charltellerportal-default-rtdb.firebaseio.com",
+        projectId: "charltellerportal",
+        storageBucket: "charltellerportal.appspot.com",
+        messagingSenderId: "863015178870",
+        appId: "1:863015178870:web:abeb537a66157f0557c557",
+        measurementId: "G-5KF8WV9PGY"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // Expose Firebase tools globally for our vanilla JS app
+      window.FB_DB = db;
+      window.FB_Ref = ref;
+      window.FB_Set = set;
+      window.FB_Get = get;
+      window.FB_Child = child;
+      window.FB_OnValue = onValue;
+      window.FB_Push = push;
+      window.FB_Remove = remove;
+      
+      // Trigger event that Firebase is loaded and ready
+      window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body { print-color-adjust: exact; }
+            .no-print { display: none !important; }
+        }
+        .tab-active {
+            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            font-weight: 600;
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header Navigation -->
-    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-800 p-2.5 rounded-xl border border-indigo-700 shadow-inner flex items-center justify-center">
-                    <i class="fa-solid fa-vault text-amber-400 text-xl"></i>
+    <!-- Top Navigation Header -->
+    <header class="bg-blue-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-800 p-2.5 rounded-lg border border-blue-700">
+                    <i class="fa-solid fa-cash-register text-2xl text-blue-200"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-base sm:text-lg tracking-tight">Charlmun ERP</h1>
-                    <p class="text-xs text-indigo-300">Teller Reconciliation & Expense Portal</p>
+                    <h1 class="text-xl font-bold tracking-tight">Charlmun Enterprises</h1>
+                    <p class="text-xs text-blue-300">Multi-Branch Teller Reconciliation Portal</p>
                 </div>
             </div>
 
-            <!-- Role Switcher & Cloud Sync Indicator -->
-            <div class="flex items-center gap-2 sm:gap-4">
-                <div id="cloud-sync-badge" class="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-800/60 text-emerald-200 px-3 py-1.5 rounded-full border border-emerald-600">
-                    <i class="fa-solid fa-cloud text-emerald-400 animate-pulse"></i> Cloud Sync Active
+            <!-- Sync Indicator & Controls -->
+            <div class="flex items-center space-x-3">
+                <span id="syncStatus" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                    <i class="fa-solid fa-rotate animate-spin mr-1.5"></i> Connecting Cloud...
+                </span>
+
+                <div class="bg-blue-800/80 px-3 py-1.5 rounded-lg text-xs border border-blue-700 flex items-center space-x-2">
+                    <label for="globalBranchSelect" class="font-semibold text-blue-200"><i class="fa-solid fa-store mr-1"></i> Branch:</label>
+                    <select id="globalBranchSelect" class="bg-blue-950 text-white border border-blue-600 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+                        <option value="Checheche">Checheche</option>
+                        <option value="Harare">Harare</option>
+                    </select>
                 </div>
-                <div class="bg-indigo-950 p-1 rounded-xl flex border border-indigo-800">
-                    <button type="button" onclick="switchRole('teller')" id="btn-role-teller" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
-                        <i class="fa-solid fa-user-pen"></i> Teller
-                    </button>
-                    <button type="button" onclick="switchRole('manager')" id="btn-role-manager" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5">
-                        <i class="fa-solid fa-shield-halved"></i> Supervisor
-                    </button>
-                </div>
+
+                <button id="managerLoginBtn" onclick="openManagerModal()" class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center shadow border border-blue-600">
+                    <i class="fa-solid fa-lock mr-1.5"></i> Manager Portal
+                </button>
             </div>
         </div>
     </header>
 
+    <!-- Main Navigation Tabs -->
+    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-[61px] z-30">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-8">
+            <button onclick="switchTab('teller')" id="tabTeller" class="py-3 px-1 text-sm font-medium transition tab-active flex items-center">
+                <i class="fa-solid fa-user-pen mr-2"></i> Teller Workspace
+            </button>
+            <button onclick="switchTab('activity')" id="tabActivity" class="py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 transition flex items-center">
+                <i class="fa-solid fa-clipboard-list mr-2"></i> Activity & Borrowing Drafts
+            </button>
+            <button onclick="switchTab('manager')" id="tabManager" class="py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 transition flex items-center">
+                <i class="fa-solid fa-chart-line mr-2"></i> Manager Oversight
+            </button>
+        </div>
+    </nav>
+
     <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
 
-        <!-- ==================== TELLER VIEW ==================== -->
-        <div id="view-teller" class="space-y-6">
-            <!-- Top Banner & Teller Selector -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <span class="inline-block bg-indigo-50 text-indigo-700 font-semibold text-xs px-2.5 py-1 rounded-full mb-1">Shift Submission</span>
-                    <h2 class="text-xl font-bold text-slate-900">Daily Cash & Expense Breakdown</h2>
-                    <p class="text-xs text-slate-500">Record cash at hand, floats, expenses, and track draft notes securely.</p>
-                </div>
-                
-                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <!-- Branch Selector -->
+        <!-- ================= TELLER WORKSPACE TAB ================= -->
+        <div id="viewTeller" class="space-y-6">
+            
+            <!-- Teller Info Bar -->
+            <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Branch</label>
-                        <select id="branch-selector" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            <option value="Checheche Main">Checheche Main</option>
-                            <option value="Checheche Branch 2">Checheche Branch 2</option>
-                            <option value="Harare Branch">Harare Branch</option>
-                        </select>
-                    </div>
-
-                    <!-- Teller Name Selector -->
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Teller Name</label>
-                        <select id="teller-selector" onchange="onTellerChange(this.value)" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Select Teller</label>
+                        <select id="tellerNameSelect" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="Lilian Chidia">Lilian Chidia</option>
                             <option value="Rumbidzai Makadho">Rumbidzai Makadho</option>
                             <option value="Panashe Makandiwona">Panashe Makandiwona</option>
                             <option value="Tinotenda Chikwanda">Tinotenda Chikwanda</option>
                         </select>
                     </div>
-
-                    <!-- Submission Date -->
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">Date</label>
-                        <input type="date" id="submission-date" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Shift Date</label>
+                        <input type="date" id="shiftDate" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
-            </div>
 
-            <!-- Active Exchange Rates Info Bar -->
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div class="flex items-center gap-2 text-amber-900 font-medium">
-                    <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
-                    <span>Active Conversion Factors (Managed by Supervisor):</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="bg-white px-3 py-1 rounded-lg border border-amber-200 font-bold text-slate-800">1 USD = R<span id="rate-usd-display">18.50</span></span>
-                    <span class="bg-white px-3 py-1 rounded-lg border border-amber-200 font-bold text-slate-800">1 ZiG = R<span id="rate-zig-display">0.40</span> <span class="text-[10px] text-slate-400 font-normal">(1 R = 2.5 ZiG)</span></span>
+                <div class="flex items-center space-x-3">
+                    <button onclick="loadPreviousShift()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition border border-slate-300">
+                        <i class="fa-solid fa-clock-rotate-left mr-1"></i> Load Last Shift Float
+                    </button>
+                    <button onclick="resetTellerForm()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-medium transition border border-rose-200">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Clear Form
+                    </button>
                 </div>
             </div>
 
-            <!-- Teller Submission Form -->
-            <form id="teller-form" onsubmit="submitSales(event)" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+            <!-- Grid for Sections -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <!-- Section 1: Float & Cash at Hand -->
-                <div>
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
-                        <i class="fa-solid fa-money-bill-wave text-indigo-600"></i> Cash at Hand & Float
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <!-- Float Received -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> Float Received</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Float" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- USD Cash at Hand -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-dollar-sign text-emerald-600"></i> USD Cash at Hand</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Cash at Hand" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Rand Cash at Hand -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-money-bill-1 text-emerald-600"></i> Rand Cash at Hand</span>
-                                <span class="text-[10px] text-emerald-700 font-bold">ZAR (R)</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="Rand Cash at Hand" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Other Payment Modes -->
-                <div>
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
-                        <i class="fa-solid fa-credit-card text-indigo-600"></i> Other Payment Modes (Bank, EcoCash, ZiG, etc.)
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- USD Bank / Transfers -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-indigo-600"></i> USD Bank / Transfer</span>
-                                <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="USD Bank Transfer" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- ZiG Sales -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-coins text-purple-600"></i> ZiG Sales</span>
-                                <span class="text-[10px] text-purple-700 font-bold">ZiG</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">ZiG</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="ZiG Sales" data-curr="ZIG" class="mode-input w-full pl-12 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- EcoCash / Mobile Money -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition space-y-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-mobile-screen-button text-blue-600"></i> EcoCash / Mobile Money</span>
-                                <span class="text-[10px] text-emerald-700 font-bold">ZAR (R)</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                                <input type="number" step="0.01" min="0" value="0.00" data-mode="EcoCash" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 3: Expenses (Suppliers & Offloaders with Notes) -->
-                <div class="pt-2">
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b pb-2">
-                        <i class="fa-solid fa-hand-holding-dollar text-rose-600"></i> Cash Outflows / Expenses Paid by Teller (Suppliers & Offloaders)
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Paid to Suppliers / Offloaders (USD) -->
-                        <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition space-y-3">
+                <!-- Column 1 & 2: Float & Payment Breakdowns -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Starting Floats -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+                        <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-wallet text-blue-600 mr-2"></i> Starting Floats & Exchange Rates
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
-                                    <span class="text-[10px] text-slate-400 font-normal">$USD</span>
-                                </label>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Starting Float (USD)</label>
                                 <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">$</span>
-                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments" data-curr="USD" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">$</span>
+                                    <input type="number" id="floatUSD" step="0.01" value="0.00" oninput="calculateTotals()" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold text-rose-800 mb-1">Note (Who was paid / Details)</label>
-                                <input type="text" id="note-Supplier/Offloader Payments" placeholder="e.g. Paid to John (Offloader)" class="w-full px-3 py-1.5 bg-white border border-rose-200 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Paid to Suppliers / Offloaders (ZAR/Rand) -->
-                        <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-200 transition space-y-3">
-                            <div>
-                                <label class="block text-xs font-bold text-rose-900 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-field text-rose-600"></i> Paid to Suppliers/Offloaders</span>
-                                    <span class="text-[10px] text-rose-600 font-bold">ZAR (R)</span>
-                                </label>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Starting Float (ZAR / Rand)</label>
                                 <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">R</span>
-                                    <input type="number" step="0.01" min="0" value="0.00" data-mode="Supplier/Offloader Payments ZAR" data-curr="ZAR" class="mode-input w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">R</span>
+                                    <input type="number" id="floatRand" step="0.01" value="0.00" oninput="calculateTotals()" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold text-rose-800 mb-1">Note (Who was paid / Details)</label>
-                                <input type="text" id="note-Supplier/Offloader Payments ZAR" placeholder="e.g. Paid to XYZ Supplier" class="w-full px-3 py-1.5 bg-white border border-rose-200 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">1 ZiG to ZAR Rate</label>
+                                <input type="number" id="zigRate" step="0.0001" value="0.40" oninput="calculateTotals()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" title="Multiplier to convert ZiG into Rand (e.g. 0.4 if 1 Rand = 2.5 ZiG)">
+                                <span class="text-[10px] text-slate-400 mt-0.5 block">Default 0.40 (1 Rand = 2.5 ZiG)</span>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Section 4: Teller Activity & Borrowing Draft Notes (Independent Log) -->
-                <div class="pt-2">
-                    <div class="flex items-center justify-between mb-3 border-b pb-2">
-                        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                            <i class="fa-solid fa-note-sticky text-amber-600"></i> Teller Activity & Borrowing Draft Notes
-                        </h3>
-                        <span class="text-xs text-slate-400">Track inter-teller loans/exchanges (Does not affect sales calculations)</span>
+                    <!-- Payment Mode Collections -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-base font-bold text-slate-800 flex items-center">
+                                <i class="fa-solid fa-credit-card text-blue-600 mr-2"></i> Payment Mode Breakdown
+                            </h2>
+                            <span class="text-xs text-slate-500">Enter amounts collected per mode</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="paymentModesContainer">
+                            <!-- Dynamically populated payment modes -->
+                        </div>
                     </div>
-                    <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200 space-y-4">
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <input type="text" id="new-draft-note" placeholder="e.g. Borrowed $20 USD from Lilian for change" class="flex-grow px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                            <button type="button" onclick="addDraftNote()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2 rounded-lg text-xs transition shadow-sm flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-plus"></i> Add Note / Borrow Log
+
+                    <!-- Expenses (Supplier / Offloader) -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-base font-bold text-slate-800 flex items-center">
+                                <i class="fa-solid fa-receipt text-rose-600 mr-2"></i> Expenses & Supplier Payments (Paid Out)
+                            </h2>
+                            <button onclick="addExpenseRow()" class="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition border border-blue-200">
+                                <i class="fa-solid fa-plus mr-1"></i> Add Expense
                             </button>
                         </div>
-                        <div id="draft-notes-list" class="space-y-2">
-                            <p class="text-xs text-slate-400 italic">No activity notes recorded yet for this shift.</p>
+                        
+                        <div id="expenseRowsList" class="space-y-3">
+                            <!-- Dynamic expense rows -->
+                        </div>
+                        <div id="noExpensesMsg" class="text-xs text-slate-400 italic py-2">No expenses added for this shift.</div>
+                    </div>
+
+                </div>
+
+                <!-- Column 3: Cash Count & Final Summary / Reconciliation -->
+                <div class="space-y-6">
+                    
+                    <!-- Physical Cash at Hand Count -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+                        <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-money-bill-wave text-emerald-600 mr-2"></i> Physical Cash at Hand Count
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">USD Cash at Hand ($)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">$</span>
+                                    <input type="number" id="actualUSD" step="0.01" value="0.00" oninput="calculateTotals()" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Rand Cash at Hand (R)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">R</span>
+                                    <input type="number" id="actualRand" step="0.01" value="0.00" oninput="calculateTotals()" class="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Submission Summary Bar & Submit Button -->
-                <div class="pt-4 flex flex-col sm:flex-row items-center justify-between bg-indigo-50 p-5 rounded-xl border border-indigo-100 gap-4">
-                    <div>
-                        <span class="text-xs font-bold text-indigo-900 uppercase tracking-wide block">Calculated Total (Unified ZAR)</span>
-                        <div class="text-2xl font-black text-indigo-950" id="teller-total-preview">R0.00</div>
-                    </div>
-                    <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> Submit Shift Figures
-                    </button>
-                </div>
-            </form>
-        </div>
+                    <!-- Live Reconciliation Card -->
+                    <div class="bg-slate-900 text-white rounded-xl shadow-lg p-5 border border-slate-800">
+                        <h2 class="text-base font-bold text-blue-400 mb-4 flex items-center">
+                            <i class="fa-solid fa-calculator mr-2"></i> Shift Reconciliation Summary
+                        </h2>
 
-        <!-- ==================== MANAGER / SUPERVISOR VIEW ==================== -->
-        <div id="view-manager" class="hidden space-y-6">
-            
-            <!-- PIN Protection Screen -->
-            <div id="manager-lock-screen" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-md border border-slate-200 text-center space-y-6 my-12">
-                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner border border-indigo-100">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <div>
-                    <h2 class="text-xl font-bold text-slate-900">Supervisor Access Required</h2>
-                    <p class="text-xs text-slate-500 mt-1">Please enter the 6-digit supervisor PIN to access oversight controls.</p>
-                </div>
-                <div class="space-y-4">
-                    <input type="password" id="manager-pin-input" maxlength="6" placeholder="Enter PIN (569596)" class="w-full text-center tracking-widest text-lg font-bold px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <button type="button" onclick="verifyManagerPin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition shadow-md">
-                        Unlock Dashboard
-                    </button>
-                </div>
-            </div>
+                        <div class="space-y-3 text-sm border-b border-slate-800 pb-4 mb-4">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Total System Sales (USD Eq):</span>
+                                <span id="summaryTotalSales" class="font-semibold text-white">$0.00</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Total Expenses Paid:</span>
+                                <span id="summaryTotalExpenses" class="font-semibold text-rose-400">$0.00</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Expected Cash (USD + ZAR):</span>
+                                <span id="summaryExpectedCash" class="font-semibold text-blue-300">$0.00</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Actual Counted Cash:</span>
+                                <span id="summaryActualCash" class="font-semibold text-emerald-400">$0.00</span>
+                            </div>
+                        </div>
 
-            <!-- Unlocked Dashboard Content -->
-            <div id="manager-dashboard-content" class="hidden space-y-6">
-                <!-- Top Header / Rate Config Trigger -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <span class="inline-block bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-1 rounded-full mb-1">Supervisor Oversight</span>
-                        <h2 class="text-xl font-bold text-slate-900">Branch Reconciliation & Audit Dashboard</h2>
-                        <p class="text-xs text-slate-500">Verify totals, calculate variances, and audit teller submissions.</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button type="button" onclick="openRateModal()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-sliders"></i> Configure Rates
-                        </button>
-                        <button type="button" onclick="lockManagerView()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-rose-200 flex items-center gap-2">
-                            <i class="fa-solid fa-lock"></i> Lock
-                        </button>
-                    </div>
-                </div>
+                        <!-- Variance Display -->
+                        <div id="varianceContainer" class="p-3 rounded-lg bg-slate-800 border border-slate-700 text-center mb-5">
+                            <span class="text-xs uppercase tracking-wider text-slate-400 block mb-1">Cash Variance Status</span>
+                            <span id="summaryVarianceText" class="text-lg font-bold text-emerald-400">Balanced ($0.00)</span>
+                        </div>
 
-                <!-- Date & Branch Filter Bar -->
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Filter Date</label>
-                            <input type="date" id="manager-filter-date" onchange="renderManagerTable()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Manager / Supervisor Notes</label>
+                            <textarea id="shiftNotes" rows="2" placeholder="Note any discrepancies, explanations, or remarks..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
                         </div>
+
+                        <button onclick="submitShift()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-sm transition shadow flex items-center justify-center">
+                            <i class="fa-solid fa-paper-plane mr-2"></i> Submit Shift Reconciliation
+                        </button>
                     </div>
-                    <div class="flex items-center gap-6 text-xs font-semibold">
-                        <div class="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 text-indigo-900">
-                            Total Submissions: <span id="stat-total-subs" class="font-bold text-sm">0</span>
-                        </div>
-                        <div class="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 text-emerald-900">
-                            Total ZAR Collected: <span id="stat-total-zar" class="font-bold text-sm">R0.00</span>
-                        </div>
-                    </div>
+
                 </div>
 
-                <!-- Submissions Table -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-200">
-                                    <th class="py-3 px-4">Teller Name</th>
-                                    <th class="py-3 px-4">Branch</th>
-                                    <th class="py-3 px-4">Declared Total (ZAR)</th>
-                                    <th class="py-3 px-4">Expected System Total (ZAR)</th>
-                                    <th class="py-3 px-4">Variance Status</th>
-                                    <th class="py-3 px-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manager-table-body" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                                <!-- Populated dynamically -->
-                            </tbody>
-                        </table>
+            </div>
+
+        </div>
+
+
+        <!-- ================= ACTIVITY & BORROWING DRAFT TAB ================= -->
+        <div id="viewActivity" class="space-y-6 hidden">
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-clipboard-list text-blue-600 mr-2"></i> Teller Activity & Borrowing Draft Log
+                        </h2>
+                        <p class="text-xs text-slate-500">Record daily notes, cash handovers between tellers, and tick off returned funds. (Does not affect financial totals).</p>
                     </div>
+                    <button onclick="addActivityDraftRow()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition shadow flex items-center">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Add Activity Log Note
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase w-12">Returned?</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase w-32">Time / Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase w-40">Teller Involved</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Activity / Borrowing Note</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase w-20">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityDraftTableBody" class="divide-y divide-slate-200 bg-white text-sm">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noActivityMsg" class="text-center py-8 text-xs text-slate-400 italic">No activity notes recorded yet. Click "Add Activity Log Note" to begin.</div>
+
+                <div class="mt-6 flex justify-end">
+                    <button onclick="saveActivityDrafts()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition shadow flex items-center">
+                        <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Drafts to Cloud
+                    </button>
                 </div>
             </div>
         </div>
+
+
+        <!-- ================= MANAGER OVERSIGHT TAB ================= -->
+        <div id="viewManager" class="space-y-6 hidden">
+            
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-chart-line text-blue-600 mr-2"></i> Manager Oversight & Branch Reports
+                    </h2>
+                    <p class="text-xs text-slate-500">Review submitted shifts, monitor cash variances, and export detailed PDF reports.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="exportManagerPDF()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition shadow flex items-center">
+                        <i class="fa-solid fa-file-pdf mr-1.5"></i> Export Report as PDF
+                    </button>
+                    <button onclick="clearAllSubmissions()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition border border-slate-300">
+                        <i class="fa-solid fa-trash mr-1"></i> Clear History
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Manager Report Section -->
+            <div id="managerReportPrintArea" class="bg-white rounded-xl shadow-sm p-6 border border-slate-200 space-y-6">
+                
+                <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">Charlmun Enterprises - Shift Submissions Log</h3>
+                        <p class="text-xs text-slate-500">Branch: <span id="reportBranchTitle" class="font-semibold text-blue-600">All Branches</span></p>
+                    </div>
+                    <div class="text-right text-xs text-slate-500">
+                        Generated: <span id="reportGeneratedDate">--</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-xs">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-3 py-3 text-left font-semibold text-slate-600 uppercase">Date</th>
+                                <th class="px-3 py-3 text-left font-semibold text-slate-600 uppercase">Branch</th>
+                                <th class="px-3 py-3 text-left font-semibold text-slate-600 uppercase">Teller</th>
+                                <th class="px-3 py-3 text-right font-semibold text-slate-600 uppercase">Sales Eq ($)</th>
+                                <th class="px-3 py-3 text-right font-semibold text-slate-600 uppercase">Expenses ($)</th>
+                                <th class="px-3 py-3 text-right font-semibold text-slate-600 uppercase">Expected ($)</th>
+                                <th class="px-3 py-3 text-right font-semibold text-slate-600 uppercase">Actual ($)</th>
+                                <th class="px-3 py-3 text-right font-semibold text-slate-600 uppercase">Variance</th>
+                                <th class="px-3 py-3 text-left font-semibold text-slate-600 uppercase">Payment Breakdown & Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="managerSubmissionsTable" class="divide-y divide-slate-200 bg-white">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noSubmissionsMsg" class="text-center py-8 text-xs text-slate-400 italic">No shift submissions recorded yet.</div>
+
+            </div>
+
+        </div>
+
     </main>
 
-    <!-- ==================== BREAKDOWN & VARIANCE MODAL ==================== -->
-    <div id="breakdown-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-indigo-900 text-white p-4 flex justify-between items-center">
-                <h3 id="breakdown-modal-title" class="font-bold text-sm">Detailed Breakdown</h3>
-                <button type="button" onclick="closeBreakdownModal()" class="text-indigo-200 hover:text-white p-1">
+    <!-- Manager Login Modal -->
+    <div id="managerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-shield-halved text-blue-600 mr-2"></i> Supervisor PIN Verification
+                </h3>
+                <button onclick="closeManagerModal()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
+            <p class="text-xs text-slate-500">Please enter the supervisor PIN to access manager oversight and settings.</p>
             
-            <div class="p-6 overflow-y-auto space-y-4 flex-grow" id="breakdown-modal-content">
-                <!-- Content populated dynamically -->
+            <div>
+                <input type="password" id="managerPinInput" maxlength="6" placeholder="Enter PIN" class="w-full text-center tracking-widest text-lg font-bold py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
 
-            <!-- Expected Total Input & PDF Export for Manager -->
-            <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
-                <div class="flex items-center gap-2">
-                    <input type="number" step="0.01" id="expected-total-input" placeholder="Enter Expected System Total (ZAR)" class="flex-grow px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <button type="button" onclick="saveExpectedTotalFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-sm">
-                        Save Expected
-                    </button>
-                </div>
-                <div class="flex justify-between items-center pt-2">
-                    <button type="button" onclick="exportBreakdownPDF()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-pdf"></i> Export Breakdown & Variance PDF
-                    </button>
-                    <button type="button" onclick="closeBreakdownModal()" class="text-slate-500 hover:text-slate-700 text-xs font-semibold px-4 py-2">
-                        Close
-                    </button>
-                </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeManagerModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition">Cancel</button>
+                <button onclick="verifyManagerPin()" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition shadow">Verify PIN</button>
             </div>
         </div>
     </div>
 
-    <!-- ==================== RATE CONFIG MODAL ==================== -->
-    <div id="rate-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 space-y-5">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-sliders text-indigo-600"></i> Configure Exchange Rates</h3>
-                <button type="button" onclick="closeRateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="space-y-4 text-xs">
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">1 USD to ZAR Rate ($)</label>
-                    <input type="number" step="0.01" id="config-usd-rate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">1 ZiG to ZAR Rate (ZiG factor)</label>
-                    <input type="number" step="0.001" id="config-zig-rate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <span class="text-[10px] text-slate-400 mt-1 block">e.g., if 1 Rand = 2.5 ZiG, enter 0.4 (1 / 2.5)</span>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onclick="closeRateModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
-                <button type="button" onclick="saveRatesFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-sm">Save Rates</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-xs">
-        <i id="toast-icon" class="fa-solid fa-check text-emerald-400 text-base"></i>
-        <div>
-            <p id="toast-title" class="font-bold">Success</p>
-            <p id="toast-msg" class="text-slate-300 text-[11px]"></p>
-        </div>
-    </div>
-
-    <!-- Application Script -->
+    <!-- JavaScript Application Logic -->
     <script>
-        // Global State & Configuration
-        window.appState = {
-            role: 'teller',
-            tellerName: 'Lilian Chidia'
-        };
+        // Payment modes: Charlmun, Credit Card, Debit Card, Restaurant (ZAR); Usd CBZ, Usd AfC (USD); Cbz Zig, Zig AfC (ZiG)
+        const PAYMENT_MODES = [
+            { id: 'charlmun', label: 'Charlmun', type: 'rand' },
+            { id: 'creditCard', label: 'Credit Card', type: 'rand' },
+            { id: 'debitCard', label: 'Debit Card', type: 'rand' },
+            { id: 'restaurant', label: 'Restaurant', type: 'rand' },
+            { id: 'usdCbz', label: 'Usd CBZ', type: 'usd' },
+            { id: 'usdAfc', label: 'Usd AfC', type: 'usd' },
+            { id: 'cbzZig', label: 'Cbz Zig', type: 'zig' },
+            { id: 'zigAfc', label: 'Zig AfC', type: 'zig' }
+        ];
 
-        window.globalRates = {
-            USD: 18.50,
-            ZIG: 0.40
-        };
+        let expensesList = [];
+        let activityDraftsList = [];
+        let allSubmissions = [];
+        let isCloudConnected = false;
 
-        window.submissionsCache = [];
-        window.draftNotesCache = [];
-        let activeModalRecordId = null;
-
-        // Cloud Sync Configuration (Using a free public JSON storage bin backend for seamless remote access)
-        const CLOUD_BIN_ID = '67389a9be41b4d34e44f8619'; // Shared cloud sync bin
-        const CLOUD_API_KEY = '$2a$10$7v2Z18r1234567890abcd...'; // Public access key
-
-        // Initialize App on Window Load
-        window.onload = async function() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('submission-date').value = todayStr;
-            document.getElementById('manager-filter-date').value = todayStr;
-
-            document.querySelectorAll('.mode-input').forEach(input => {
-                input.addEventListener('input', calculateTellerTotalPreview);
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('shiftDate').valueAsDate = new Date();
+            renderPaymentModes();
+            addExpenseRow();
+            
+            document.getElementById('globalBranchSelect').addEventListener('change', () => {
+                filterDataByBranch();
             });
 
-            // Load from cloud first, fallback to local storage
-            await fetchCloudData();
-            loadLocalDraftNotes();
-            updateRoleUI();
-            calculateTellerTotalPreview();
+            window.addEventListener('firebase-ready', () => {
+                initFirebaseListeners();
+            });
+        });
 
-            // Periodic sync check every 15 seconds
-            setInterval(fetchCloudData, 15000);
-        };
-
-        async function fetchCloudData() {
+        function initFirebaseListeners() {
             try {
-                const response = await fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}/latest`, {
-                    headers: { 'X-Master-Key': '$2a$10$vK3zQ8F...public' } // Public read access
+                const db = window.FB_DB;
+                const ref = window.FB_Ref;
+                const onValue = window.FB_OnValue;
+
+                const submissionsRef = ref(db, 'submissions');
+                onValue(submissionsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    allSubmissions = data ? Object.values(data) : [];
+                    updateSyncStatus(true);
+                    renderManagerTable();
+                }, (error) => {
+                    console.error("Firebase sync error:", error);
+                    updateSyncStatus(false);
                 });
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.record) {
-                        if (data.record.submissions) {
-                            submissionsCache = data.record.submissions;
-                            localStorage.setItem('charlmun_submissions', JSON.stringify(submissionsCache));
-                        }
-                        if (data.record.rates) {
-                            globalRates = data.record.rates;
-                            localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
-                        }
-                    }
-                }
-            } catch (err) {
-                // Fallback to local storage if offline
-                loadLocalSubmissions();
-                loadLocalRates();
-            }
 
-            loadLocalRates();
-            loadLocalSubmissions();
-            if (window.appState.role === 'manager') {
-                renderManagerTable();
-            }
-        }
-
-        async function pushCloudData() {
-            const payload = {
-                submissions: submissionsCache,
-                rates: globalRates,
-                updatedAt: new Date().toISOString()
-            };
-
-            // Save locally immediately
-            localStorage.setItem('charlmun_submissions', JSON.stringify(submissionsCache));
-            localStorage.setItem('charlmun_rates', JSON.stringify(globalRates));
-
-            try {
-                await fetch(`https://api.jsonbin.io/v3/b/${CLOUD_BIN_ID}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': '$2a$10$vK3zQ8F...public'
-                    },
-                    body: JSON.stringify(payload)
+                const draftsRef = ref(db, 'activityDrafts');
+                onValue(draftsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    activityDraftsList = data ? Object.values(data) : [];
+                    renderActivityDrafts();
                 });
-                document.getElementById('cloud-sync-badge').innerHTML = `<i class="fa-solid fa-cloud text-emerald-400"></i> Cloud Synced`;
             } catch (err) {
-                document.getElementById('cloud-sync-badge').innerHTML = `<i class="fa-solid fa-cloud-arrow-down text-amber-400"></i> Saved Locally (Offline)`;
+                console.error("Failed to initialize Firebase listeners:", err);
+                updateSyncStatus(false);
             }
         }
 
-        function loadLocalRates() {
-            try {
-                const stored = localStorage.getItem('charlmun_rates');
-                if (stored) {
-                    window.globalRates = JSON.parse(stored);
-                }
-            } catch (err) {}
-            document.getElementById('rate-usd-display').textContent = window.globalRates.USD.toFixed(2);
-            document.getElementById('rate-zig-display').textContent = window.globalRates.ZIG.toFixed(3);
-        }
-
-        function saveLocalRates() {
-            pushCloudData();
-        }
-
-        function loadLocalSubmissions() {
-            try {
-                const stored = localStorage.getItem('charlmun_submissions');
-                submissionsCache = stored ? JSON.parse(stored) : [];
-            } catch (err) {
-                submissionsCache = [];
-            }
-            if (window.appState.role === 'manager') {
-                renderManagerTable();
-            }
-        }
-
-        function saveLocalSubmissions() {
-            pushCloudData();
-        }
-
-        function loadLocalDraftNotes() {
-            try {
-                const dateVal = document.getElementById('submission-date').value;
-                const tellerName = window.appState.tellerName;
-                const key = `charlmun_draft_${dateVal}_${tellerName}`;
-                const stored = localStorage.getItem(key);
-                draftNotesCache = stored ? JSON.parse(stored) : [];
-                renderDraftNotes();
-            } catch (err) {
-                draftNotesCache = [];
-                renderDraftNotes();
-            }
-        }
-
-        function saveLocalDraftNotes() {
-            try {
-                const dateVal = document.getElementById('submission-date').value;
-                const tellerName = window.appState.tellerName;
-                const key = `charlmun_draft_${dateVal}_${tellerName}`;
-                localStorage.setItem(key, JSON.stringify(draftNotesCache));
-            } catch (err) {}
-        }
-
-        // Role Switching Logic
-        window.switchRole = function(role) {
-            window.appState.role = role;
-            if (role === 'manager') {
-                document.getElementById('btn-role-manager').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5";
-                document.getElementById('btn-role-teller').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5";
-                
-                document.getElementById('view-teller').classList.add('hidden');
-                document.getElementById('view-manager').classList.remove('hidden');
+        function updateSyncStatus(connected) {
+            isCloudConnected = connected;
+            const badge = document.getElementById('syncStatus');
+            if (connected) {
+                badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-500/30";
+                badge.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Cloud Connected';
             } else {
-                document.getElementById('btn-role-teller').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5";
-                document.getElementById('btn-role-manager').className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-300 hover:text-white flex items-center gap-1.5";
-                
-                document.getElementById('view-manager').classList.add('hidden');
-                document.getElementById('view-teller').classList.remove('hidden');
+                badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/20 text-rose-200 border border-rose-500/30";
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Sync Offline';
             }
-        };
+        }
 
-        window.updateRoleUI = function() {
-            // Initial check
-        };
+        function switchTab(tabName) {
+            document.getElementById('viewTeller').classList.add('hidden');
+            document.getElementById('viewActivity').classList.add('hidden');
+            document.getElementById('viewManager').classList.add('hidden');
 
-        window.onTellerChange = function(name) {
-            window.appState.tellerName = name;
-            loadLocalDraftNotes();
-        };
+            document.getElementById('tabTeller').className = "py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 transition flex items-center";
+            document.getElementById('tabActivity').className = "py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 transition flex items-center";
+            document.getElementById('tabManager').className = "py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 transition flex items-center";
 
-        // Teller Activity & Borrowing Draft Notes Functions
-        window.addDraftNote = function() {
-            const input = document.getElementById('new-draft-note');
-            const text = input.value.trim();
-            if (!text) return;
+            if (tabName === 'teller') {
+                document.getElementById('viewTeller').classList.remove('hidden');
+                document.getElementById('tabTeller').className = "py-3 px-1 text-sm font-medium tab-active flex items-center";
+            } else if (tabName === 'activity') {
+                document.getElementById('viewActivity').classList.remove('hidden');
+                document.getElementById('tabActivity').className = "py-3 px-1 text-sm font-medium tab-active flex items-center";
+            } else if (tabName === 'manager') {
+                document.getElementById('viewManager').classList.remove('hidden');
+                document.getElementById('tabManager').className = "py-3 px-1 text-sm font-medium tab-active flex items-center";
+                renderManagerTable();
+            }
+        }
 
-            draftNotesCache.push({
-                id: Date.now(),
-                text: text,
-                returned: false,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        function renderPaymentModes() {
+            const container = document.getElementById('paymentModesContainer');
+            container.innerHTML = '';
+
+            PAYMENT_MODES.forEach(mode => {
+                let symbol = '$';
+                if (mode.type === 'rand') symbol = 'R';
+                else if (mode.type === 'zig') symbol = 'ZiG';
+
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label class="block text-xs font-medium text-slate-600 mb-1">${mode.label} (${mode.type.toUpperCase()})</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">${symbol}</span>
+                        <input type="number" id="pay_${mode.id}" step="0.01" value="0.00" oninput="calculateTotals()" class="w-full pl-12 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                `;
+                container.appendChild(div);
             });
+        }
 
-            input.value = '';
-            saveLocalDraftNotes();
-            renderDraftNotes();
-        };
+        function addExpenseRow() {
+            expensesList.push({ id: Date.now() + Math.random(), recipient: '', amount: 0 });
+            renderExpenses();
+            calculateTotals();
+        }
 
-        window.toggleDraftReturn = function(id) {
-            const note = draftNotesCache.find(n => n.id === id);
-            if (note) {
-                note.returned = !note.returned;
-                saveLocalDraftNotes();
-                renderDraftNotes();
+        function removeExpenseRow(id) {
+            expensesList = expensesList.filter(e => e.id !== id);
+            renderExpenses();
+            calculateTotals();
+        }
+
+        function updateExpense(id, field, value) {
+            const exp = expensesList.find(e => e.id === id);
+            if (exp) {
+                exp[field] = value;
+                calculateTotals();
             }
-        };
+        }
 
-        window.deleteDraftNote = function(id) {
-            draftNotesCache = draftNotesCache.filter(n => n.id !== id);
-            saveLocalDraftNotes();
-            renderDraftNotes();
-        };
+        function renderExpenses() {
+            const list = document.getElementById('expenseRowsList');
+            const msg = document.getElementById('noExpensesMsg');
+            list.innerHTML = '';
 
-        function renderDraftNotes() {
-            const container = document.getElementById('draft-notes-list');
-            if (!draftNotesCache || draftNotesCache.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic">No activity notes recorded yet for this shift.</p>`;
+            if (expensesList.length === 0) {
+                msg.classList.remove('hidden');
                 return;
             }
+            msg.classList.add('hidden');
 
-            container.innerHTML = draftNotesCache.map(note => `
-                <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-200 text-xs shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" ${note.returned ? 'checked' : ''} onchange="toggleDraftReturn(${note.id})" class="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer">
-                        <div>
-                            <span class="${note.returned ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}">${note.text}</span>
-                            <span class="block text-[10px] text-slate-400">${note.timestamp} ${note.returned ? '• <strong class="text-emerald-600">Returned / Settled</strong>' : '• <strong class="text-amber-600">Pending Return</strong>'}</span>
-                        </div>
+            expensesList.forEach((exp, idx) => {
+                const row = document.createElement('div');
+                row.className = "flex items-center space-x-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200";
+                row.innerHTML = `
+                    <span class="text-xs font-bold text-slate-400 w-6">#${idx + 1}</span>
+                    <input type="text" placeholder="Paid To / Recipient / Note" value="${exp.recipient}" oninput="updateExpense(${exp.id}, 'recipient', this.value)" class="flex-grow px-3 py-1.5 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                    <div class="relative w-32">
+                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs">$</span>
+                        <input type="number" step="0.01" value="${exp.amount}" oninput="updateExpense(${exp.id}, 'amount', parseFloat(this.value) || 0)" class="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
                     </div>
-                    <button type="button" onclick="deleteDraftNote(${note.id})" class="text-slate-400 hover:text-rose-600 p-1" title="Delete Note">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                </div>
-            `).join('');
+                    <button onclick="removeExpenseRow(${exp.id})" class="text-rose-500 hover:text-rose-700 p-1.5"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                `;
+                list.appendChild(row);
+            });
         }
 
-        // Live Preview Calculator
-        function calculateTellerTotalPreview() {
-            let totalZar = 0;
-            document.querySelectorAll('.mode-input').forEach(input => {
-                const curr = input.getAttribute('data-curr');
-                const mode = input.getAttribute('data-mode');
-                const val = parseFloat(input.value) || 0;
-                
-                let zarEq = 0;
-                if (curr === 'USD') zarEq = val * globalRates.USD;
-                if (curr === 'ZIG') zarEq = val * globalRates.ZIG;
-                if (curr === 'ZAR') zarEq = val;
+        function calculateTotals() {
+            let totalSalesUSD = 0;
+            let zarToUsd = 1/18.0; // Standard approx ZAR to USD rate
 
-                // Subtract supplier/offloader expenses from total
-                if (mode.includes('Supplier/Offloader')) {
-                    zarEq = -Math.abs(zarEq);
+            PAYMENT_MODES.forEach(mode => {
+                const val = parseFloat(document.getElementById(`pay_${mode.id}`).value) || 0;
+                if (mode.type === 'usd') {
+                    totalSalesUSD += val;
+                } else if (mode.type === 'rand') {
+                    totalSalesUSD += (val * zarToUsd);
+                } else if (mode.type === 'zig') {
+                    let zigRate = parseFloat(document.getElementById('zigRate').value) || 0.40;
+                    totalSalesUSD += (val * zigRate * zarToUsd);
                 }
-
-                totalZar += zarEq;
             });
-            document.getElementById('teller-total-preview').textContent = `R${totalZar.toFixed(2)}`;
+
+            let totalExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+            const floatUSD = parseFloat(document.getElementById('floatUSD').value) || 0;
+            const floatRand = parseFloat(document.getElementById('floatRand').value) || 0;
+            const floatUSDEquivalent = floatUSD + (floatRand * zarToUsd);
+
+            const expectedCashUSD = floatUSDEquivalent + totalSalesUSD - totalExpenses;
+
+            const actualUSD = parseFloat(document.getElementById('actualUSD').value) || 0;
+            const actualRand = parseFloat(document.getElementById('actualRand').value) || 0;
+            const actualTotalUSD = actualUSD + (actualRand * zarToUsd);
+
+            const variance = actualTotalUSD - expectedCashUSD;
+
+            document.getElementById('summaryTotalSales').innerText = `$${totalSalesUSD.toFixed(2)}`;
+            document.getElementById('summaryTotalExpenses').innerText = `$${totalExpenses.toFixed(2)}`;
+            document.getElementById('summaryExpectedCash').innerText = `$${expectedCashUSD.toFixed(2)}`;
+            document.getElementById('summaryActualCash').innerText = `$${actualTotalUSD.toFixed(2)}`;
+
+            const varianceBox = document.getElementById('varianceContainer');
+            const varianceText = document.getElementById('summaryVarianceText');
+
+            if (Math.abs(variance) < 0.01) {
+                varianceBox.className = "p-3 rounded-lg bg-emerald-950/60 border border-emerald-800 text-center mb-5";
+                varianceText.className = "text-lg font-bold text-emerald-400";
+                varianceText.innerText = `Balanced ($0.00)`;
+            } else if (variance > 0) {
+                varianceBox.className = "p-3 rounded-lg bg-blue-950/60 border border-blue-800 text-center mb-5";
+                varianceText.className = "text-lg font-bold text-blue-400";
+                varianceText.innerText = `Over (+ $${variance.toFixed(2)})`;
+            } else {
+                varianceBox.className = "p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-center mb-5";
+                varianceText.className = "text-lg font-bold text-rose-400";
+                varianceText.innerText = `Short (- $${Math.abs(variance).toFixed(2)})`;
+            }
         }
 
-        // Submit Sales Handler
-        window.submitSales = function(event) {
-            event.preventDefault();
-            const dateVal = document.getElementById('submission-date').value;
-            const branch = document.getElementById('branch-selector').value;
-            const tellerName = window.appState.tellerName;
-            
-            const breakdown = {};
-            let totalZar = 0;
+        function submitShift() {
+            const branch = document.getElementById('globalBranchSelect').value;
+            const teller = document.getElementById('tellerNameSelect').value;
+            const date = document.getElementById('shiftDate').value;
 
-            document.querySelectorAll('.mode-input').forEach(input => {
-                const mode = input.getAttribute('data-mode');
-                const curr = input.getAttribute('data-curr');
-                const val = parseFloat(input.value) || 0;
-                
-                let zarEquivalent = 0;
-                if (curr === 'USD') zarEquivalent = val * globalRates.USD;
-                if (curr === 'ZIG') zarEquivalent = val * globalRates.ZIG;
-                if (curr === 'ZAR') zarEquivalent = val;
+            let totalSalesUSD = 0;
+            let zarToUsd = 1/18.0;
+            let zigRate = parseFloat(document.getElementById('zigRate').value) || 0.40;
+            let paymentBreakdown = {};
 
-                if (mode.includes('Supplier/Offloader')) {
-                    zarEquivalent = -Math.abs(zarEquivalent);
-                }
-
-                let note = '';
-                const noteInput = document.getElementById(`note-${mode}`);
-                if (noteInput) {
-                    note = noteInput.value.trim();
-                }
-
-                breakdown[mode] = { raw: val, currency: curr, zar: zarEquivalent, note: note };
-                totalZar += zarEquivalent;
+            PAYMENT_MODES.forEach(mode => {
+                const val = parseFloat(document.getElementById(`pay_${mode.id}`).value) || 0;
+                paymentBreakdown[mode.label] = val;
+                if (mode.type === 'usd') totalSalesUSD += val;
+                else if (mode.type === 'rand') totalSalesUSD += (val * zarToUsd);
+                else totalSalesUSD += (val * zigRate * zarToUsd);
             });
 
-            const recordId = `${dateVal}_${tellerName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const existing = submissionsCache.find(s => s.id === recordId);
-            const expectedTotalZar = existing ? (existing.expectedTotalZar !== undefined ? existing.expectedTotalZar : null) : null;
-            
-            const recordData = {
-                id: recordId,
-                date: dateVal,
-                branch: branch,
-                tellerName: tellerName,
-                breakdown: breakdown,
-                declaredTotalZar: totalZar,
-                expectedTotalZar: expectedTotalZar,
-                ratesUsed: { ...globalRates },
-                draftNotes: [...draftNotesCache],
-                updatedAt: new Date().toISOString()
+            let totalExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
+            const floatUSD = parseFloat(document.getElementById('floatUSD').value) || 0;
+            const floatRand = parseFloat(document.getElementById('floatRand').value) || 0;
+            const floatUSDEquivalent = floatUSD + (floatRand * zarToUsd);
+            const expectedCashUSD = floatUSDEquivalent + totalSalesUSD - totalExpenses;
+
+            const actualUSD = parseFloat(document.getElementById('actualUSD').value) || 0;
+            const actualRand = parseFloat(document.getElementById('actualRand').value) || 0;
+            const actualTotalUSD = actualUSD + (actualRand * zarToUsd);
+            const variance = actualTotalUSD - expectedCashUSD;
+
+            const shiftRecord = {
+                id: 'SHIFT_' + Date.now(),
+                timestamp: new Date().toISOString(),
+                branch,
+                teller,
+                date,
+                actualUSD,
+                actualRand,
+                totalSalesUSD,
+                totalExpenses,
+                expectedCashUSD,
+                actualTotalUSD,
+                variance,
+                paymentBreakdown,
+                expenses: [...expensesList],
+                notes: document.getElementById('shiftNotes').value
             };
 
-            const index = submissionsCache.findIndex(s => s.id === recordId);
-            if (index >= 0) {
-                submissionsCache[index] = { ...submissionsCache[index], ...recordData };
+            if (isCloudConnected && window.FB_DB) {
+                const db = window.FB_DB;
+                const ref = window.FB_Ref;
+                const set = window.FB_Set;
+                set(ref(db, 'submissions/' + shiftRecord.id), shiftRecord).then(() => {
+                    alert('Shift reconciliation submitted successfully and synced to cloud!');
+                    resetTellerForm();
+                }).catch(err => {
+                    alert('Error syncing to cloud: ' + err.message);
+                });
             } else {
-                submissionsCache.push(recordData);
-            }
-
-            saveLocalSubmissions();
-            showToast("Success", "Shift breakdown submitted & synced to cloud!");
-        };
-
-        // Manager PIN Verification
-        window.verifyManagerPin = function() {
-            const pin = document.getElementById('manager-pin-input').value;
-            if (pin === '569596') {
-                document.getElementById('manager-lock-screen').classList.add('hidden');
-                document.getElementById('manager-dashboard-content').classList.remove('hidden');
-                document.getElementById('manager-pin-input').value = '';
+                allSubmissions.push(shiftRecord);
+                alert('Shift submitted locally!');
+                resetTellerForm();
                 renderManagerTable();
-                showToast("Access Granted", "Welcome to Supervisor Oversight");
-            } else {
-                showToast("Access Denied", "Incorrect Supervisor PIN", "error");
-                document.getElementById('manager-pin-input').value = '';
             }
-        };
+        }
 
-        window.lockManagerView = function() {
-            document.getElementById('manager-dashboard-content').classList.add('hidden');
-            document.getElementById('manager-lock-screen').classList.remove('hidden');
-        };
+        function resetTellerForm() {
+            document.getElementById('floatUSD').value = '0.00';
+            document.getElementById('floatRand').value = '0.00';
+            document.getElementById('actualUSD').value = '0.00';
+            document.getElementById('actualRand').value = '0.00';
+            document.getElementById('shiftNotes').value = '';
+            PAYMENT_MODES.forEach(mode => {
+                document.getElementById(`pay_${mode.id}`).value = '0.00';
+            });
+            expensesList = [];
+            addExpenseRow();
+            calculateTotals();
+        }
 
-        // Render Manager Table
+        function loadPreviousShift() {
+            if (allSubmissions.length === 0) {
+                alert('No previous shifts found.');
+                return;
+            }
+            const last = allSubmissions[allSubmissions.length - 1];
+            document.getElementById('floatUSD').value = last.actualUSD || 0;
+            document.getElementById('floatRand').value = last.actualRand || 0;
+            alert(`Loaded float from previous shift (${last.teller} - ${last.date})`);
+            calculateTotals();
+        }
+
+        function addActivityDraftRow() {
+            activityDraftsList.push({
+                id: Date.now() + Math.random(),
+                returned: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString(),
+                teller: document.getElementById('tellerNameSelect').value,
+                note: ''
+            });
+            renderActivityDrafts();
+        }
+
+        function removeActivityDraftRow(id) {
+            activityDraftsList = activityDraftsList.filter(d => d.id !== id);
+            renderActivityDrafts();
+        }
+
+        function updateActivityDraft(id, field, value) {
+            const draft = activityDraftsList.find(d => d.id === id);
+            if (draft) {
+                draft[field] = value;
+            }
+        }
+
+        function renderActivityDrafts() {
+            const tbody = document.getElementById('activityDraftTableBody');
+            const msg = document.getElementById('noActivityMsg');
+            tbody.innerHTML = '';
+
+            if (activityDraftsList.length === 0) {
+                msg.classList.remove('hidden');
+                return;
+            }
+            msg.classList.add('hidden');
+
+            activityDraftsList.forEach(draft => {
+                const tr = document.createElement('tr');
+                tr.className = draft.returned ? 'bg-emerald-50/50 opacity-75' : '';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-center">
+                        <input type="checkbox" ${draft.returned ? 'checked' : ''} onchange="updateActivityDraft(${draft.id}, 'returned', this.checked); renderActivityDrafts();" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                    </td>
+                    <td class="px-4 py-3 text-xs text-slate-500">${draft.timestamp}</td>
+                    <td class="px-4 py-3">
+                        <input type="text" value="${draft.teller}" oninput="updateActivityDraft(${draft.id}, 'teller', this.value)" class="w-full px-2 py-1 bg-slate-50 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="text" placeholder="e.g. Borrowed $20 cash from Teller 2 for change" value="${draft.note}" oninput="updateActivityDraft(${draft.id}, 'note', this.value)" class="w-full px-3 py-1 bg-slate-50 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${draft.returned ? 'line-through text-slate-400' : ''}">
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="removeActivityDraftRow(${draft.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveActivityDrafts() {
+            if (isCloudConnected && window.FB_DB) {
+                const db = window.FB_DB;
+                const set = window.FB_Set;
+                const ref = window.FB_Ref;
+                
+                let draftsObj = {};
+                activityDraftsList.forEach(d => { draftsObj[d.id] = d; });
+
+                set(ref(db, 'activityDrafts'), draftsObj).then(() => {
+                    alert('Activity draft logs saved to cloud successfully!');
+                }).catch(err => {
+                    alert('Error saving drafts: ' + err.message);
+                });
+            } else {
+                alert('Activity draft logs updated locally.');
+            }
+        }
+
+        function openManagerModal() {
+            document.getElementById('managerPinInput').value = '';
+            document.getElementById('managerModal').classList.remove('hidden');
+        }
+
+        function closeManagerModal() {
+            document.getElementById('managerModal').classList.add('hidden');
+        }
+
+        function verifyManagerPin() {
+            const pin = document.getElementById('managerPinInput').value;
+            if (pin === '569596') {
+                closeManagerModal();
+                switchTab('manager');
+            } else {
+                alert('Incorrect Supervisor PIN.');
+            }
+        }
+
+        function filterDataByBranch() {
+            renderManagerTable();
+        }
+
         function renderManagerTable() {
-            const filterDate = document.getElementById('manager-filter-date').value;
-            const tbody = document.getElementById('manager-table-body');
-            
-            const filtered = submissionsCache.filter(s => s.date === filterDate);
-            document.getElementById('stat-total-subs').textContent = filtered.length;
-            
-            let sumZar = filtered.reduce((acc, curr) => acc + (curr.declaredTotalZar || 0), 0);
-            document.getElementById('stat-total-zar').textContent = `R${sumZar.toFixed(2)}`;
+            const branchFilter = document.getElementById('globalBranchSelect').value;
+            document.getElementById('reportBranchTitle').innerText = branchFilter;
+            document.getElementById('reportGeneratedDate').innerText = new Date().toLocaleString();
+
+            const tbody = document.getElementById('managerSubmissionsTable');
+            const msg = document.getElementById('noSubmissionsMsg');
+            tbody.innerHTML = '';
+
+            const filtered = allSubmissions.filter(s => s.branch === branchFilter);
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic">No submissions found for ${filterDate}.</td></tr>`;
+                msg.classList.remove('hidden');
                 return;
             }
+            msg.classList.add('hidden');
 
-            tbody.innerHTML = filtered.map(record => {
-                const declared = record.declaredTotalZar || 0;
-                const expected = record.expectedTotalZar;
-                let varianceBadge = `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold">Pending Expected</span>`;
+            filtered.forEach(sub => {
+                let breakdownStr = Object.entries(sub.paymentBreakdown || {})
+                    .map(([k, v]) => {
+                        let prefix = '$';
+                        if (['Charlmun', 'Credit Card', 'Debit Card', 'Restaurant'].includes(k)) prefix = 'R';
+                        else if (['Zig AfC', 'Cbz Zig'].includes(k)) prefix = 'ZiG ';
+                        return `${k}: ${prefix}${v.toFixed(2)}`;
+                    }).join(' | ');
 
-                if (expected !== null && expected !== undefined) {
-                    const variance = declared - expected;
-                    if (Math.abs(variance) < 0.01) {
-                        varianceBadge = `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">Balanced (R0.00)</span>`;
-                    } else if (variance < 0) {
-                        varianceBadge = `<span class="px-2.5 py-1 bg-rose-50 text-rose-700 rounded-full text-[10px] font-bold">Short by R${Math.abs(variance).toFixed(2)}</span>`;
-                    } else {
-                        varianceBadge = `<span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-bold">Over by R${variance.toFixed(2)}</span>`;
-                    }
-                }
+                let expensesStr = (sub.expenses || []).map(e => `${e.recipient}: $${e.amount.toFixed(2)}`).join(', ');
 
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-3 px-4 font-bold text-slate-900">${record.tellerName}</td>
-                        <td class="py-3 px-4 text-slate-500">${record.branch || 'Checheche Main'}</td>
-                        <td class="py-3 px-4 font-bold text-indigo-900">R${declared.toFixed(2)}</td>
-                        <td class="py-3 px-4 text-slate-600">${expected !== null && expected !== undefined ? 'R' + expected.toFixed(2) : 'Not Entered'}</td>
-                        <td class="py-3 px-4">${varianceBadge}</td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="openBreakdownModal('${record.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition border border-indigo-200">
-                                <i class="fa-solid fa-eye mr-1"></i> Review & Audit
-                            </button>
-                        </td>
-                    </tr>
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-3 py-3 font-medium">${sub.date}</td>
+                    <td class="px-3 py-3">${sub.branch}</td>
+                    <td class="px-3 py-3 font-semibold">${sub.teller}</td>
+                    <td class="px-3 py-3 text-right">$${sub.totalSalesUSD.toFixed(2)}</td>
+                    <td class="px-3 py-3 text-right text-rose-600">$${sub.totalExpenses.toFixed(2)}</td>
+                    <td class="px-3 py-3 text-right">$${sub.expectedCashUSD.toFixed(2)}</td>
+                    <td class="px-3 py-3 text-right font-semibold">$${sub.actualTotalUSD.toFixed(2)}</td>
+                    <td class="px-3 py-3 text-right font-bold ${sub.variance >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${sub.variance >= 0 ? '+' : ''}$${sub.variance.toFixed(2)}
+                    </td>
+                    <td class="px-3 py-3 text-slate-600">
+                        <div class="font-medium text-slate-700">${breakdownStr}</div>
+                        ${expensesStr ? `<div class="text-[11px] text-rose-500 mt-0.5">Expenses: ${expensesStr}</div>` : ''}
+                        ${sub.notes ? `<div class="text-[11px] text-slate-500 italic mt-0.5">Note: ${sub.notes}</div>` : ''}
+                    </td>
                 `;
-            }).join('');
-        }
-
-        // Breakdown Modal Actions
-        window.openBreakdownModal = function(recordId) {
-            const record = submissionsCache.find(s => s.id === recordId);
-            if (!record || !record.breakdown) return;
-
-            activeModalRecordId = recordId;
-            document.getElementById('breakdown-modal-title').textContent = `Breakdown for ${record.tellerName} (${record.date})`;
-            document.getElementById('expected-total-input').value = record.expectedTotalZar !== null && record.expectedTotalZar !== undefined ? record.expectedTotalZar : '';
-            
-            const content = document.getElementById('breakdown-modal-content');
-            const declared = record.declaredTotalZar || 0;
-            const expected = record.expectedTotalZar;
-            
-            let notesHtml = '';
-            if (record.draftNotes && record.draftNotes.length > 0) {
-                notesHtml = `
-                    <div class="mt-4 pt-3 border-t border-slate-200">
-                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Teller Activity & Borrowing Draft Notes</span>
-                        <div class="space-y-1.5">
-                            ${record.draftNotes.map(n => `
-                                <div class="text-xs p-2 bg-slate-50 rounded border border-slate-200 flex justify-between items-center">
-                                    <span>${n.text}</span>
-                                    <span class="font-bold ${n.returned ? 'text-emerald-600' : 'text-amber-600'}">${n.returned ? 'Returned / Settled' : 'Pending'}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            content.innerHTML = Object.entries(record.breakdown).map(([mode, data]) => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200 text-sm">
-                    <div>
-                        <span class="font-medium text-slate-700">${mode}</span>
-                        <div class="text-[11px] text-slate-400">${data.raw} ${data.currency} ${data.note ? '<br><span class="text-rose-700 font-medium">Note: ' + data.note + '</span>' : ''}</div>
-                    </div>
-                    <span class="font-bold text-slate-900">R${Number(data.zar).toFixed(2)}</span>
-                </div>
-            `).join('') + `
-                <div class="flex justify-between items-center p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-sm font-bold text-indigo-950 mt-2">
-                    <span>Declared Grand Total (ZAR)</span>
-                    <span>R${declared.toFixed(2)}</span>
-                </div>
-                <div class="flex justify-between items-center p-3 bg-slate-100 rounded-xl border border-slate-200 text-sm font-bold text-slate-900">
-                    <span>Expected System Total (ZAR)</span>
-                    <span>${expected !== null && expected !== undefined ? 'R' + expected.toFixed(2) : 'Not Entered'}</span>
-                </div>
-                ${notesHtml}
-            `;
-
-            document.getElementById('breakdown-modal').classList.remove('hidden');
-        };
-
-        window.closeBreakdownModal = function() {
-            document.getElementById('breakdown-modal').classList.add('hidden');
-            activeModalRecordId = null;
-        };
-
-        window.saveExpectedTotalFromModal = function() {
-            if (!activeModalRecordId) return;
-            const val = parseFloat(document.getElementById('expected-total-input').value);
-            if (isNaN(val)) {
-                showToast("Error", "Please enter a valid expected total", "error");
-                return;
-            }
-
-            const record = submissionsCache.find(s => s.id === activeModalRecordId);
-            if (record) {
-                record.expectedTotalZar = val;
-                saveLocalSubmissions();
-                renderManagerTable();
-                openBreakdownModal(activeModalRecordId);
-                showToast("Success", "Expected total saved and variance calculated!");
-            }
-        };
-
-        // Rate Configuration Modal Actions
-        window.openRateModal = function() {
-            document.getElementById('config-usd-rate').value = globalRates.USD;
-            document.getElementById('config-zig-rate').value = globalRates.ZIG;
-            document.getElementById('rate-modal').classList.remove('hidden');
-        };
-
-        window.closeRateModal = function() {
-            document.getElementById('rate-modal').classList.add('hidden');
-        };
-
-        window.saveRatesFromModal = function() {
-            const usd = parseFloat(document.getElementById('config-usd-rate').value);
-            const zig = parseFloat(document.getElementById('config-zig-rate').value);
-            
-            if (isNaN(usd) || isNaN(zig)) {
-                showToast("Error", "Please enter valid exchange rates", "error");
-                return;
-            }
-
-            globalRates.USD = usd;
-            globalRates.ZIG = zig;
-            saveLocalRates();
-            loadLocalRates();
-            calculateTellerTotalPreview();
-            closeRateModal();
-            showToast("Success", "Exchange rates updated successfully!");
-        };
-
-        // PDF Export of Breakdown and Variance
-        window.exportBreakdownPDF = function() {
-            if (!activeModalRecordId) return;
-            const record = submissionsCache.find(s => s.id === activeModalRecordId);
-            if (!record) return;
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(16);
-            doc.text("Charlmun Enterprises - Reconciliation Report", 14, 20);
-
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Branch: ${record.branch || 'Checheche Main'}`, 14, 28);
-            doc.text(`Teller Name: ${record.tellerName}`, 14, 34);
-            doc.text(`Date: ${record.date}`, 14, 40);
-
-            let y = 50;
-            doc.setFont("helvetica", "bold");
-            doc.text("Payment Mode / Expense", 14, y);
-            doc.text("Raw Value", 110, y);
-            doc.text("ZAR Equivalent", 160, y);
-            doc.line(14, y + 2, 196, y + 2);
-
-            y += 8;
-            doc.setFont("helvetica", "normal");
-
-            Object.entries(record.breakdown).forEach(([mode, data]) => {
-                doc.text(mode, 14, y);
-                doc.text(`${data.raw} ${data.currency}`, 110, y);
-                doc.text(`R${Number(data.zar).toFixed(2)}`, 160, y);
-                if (data.note) {
-                    y += 5;
-                    doc.setFontSize(8);
-                    doc.setTextColor(150, 50, 50);
-                    doc.text(`Note: ${data.note}`, 18, y);
-                    doc.setFontSize(10);
-                    doc.setTextColor(0, 0, 0);
-                }
-                y += 8;
+                tbody.appendChild(tr);
             });
-
-            doc.line(14, y, 196, y);
-            y += 8;
-            doc.setFont("helvetica", "bold");
-            doc.text("Declared Grand Total (ZAR):", 14, y);
-            doc.text(`R${(record.declaredTotalZar || 0).toFixed(2)}`, 160, y);
-
-            y += 8;
-            const expected = record.expectedTotalZar;
-            doc.text("Expected System Total (ZAR):", 14, y);
-            doc.text(expected !== null && expected !== undefined ? `R${expected.toFixed(2)}` : 'Not Entered', 160, y);
-
-            if (expected !== null && expected !== undefined) {
-                y += 8;
-                const variance = (record.declaredTotalZar || 0) - expected;
-                let varText = variance === 0 ? "Balanced (R0.00)" : variance < 0 ? `Short by R${Math.abs(variance).toFixed(2)}` : `Over by R${variance.toFixed(2)}`;
-                doc.text("Variance Status:", 14, y);
-                doc.text(varText, 160, y);
-            }
-
-            doc.save(`Reconciliation_${record.tellerName}_${record.date}.pdf`);
-            showToast("Success", "Breakdown & Variance PDF exported successfully!");
-        };
-
-        // Toast Notification Helper
-        function showToast(title, msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-title').textContent = title;
-            document.getElementById('toast-msg').textContent = msg;
-            
-            const icon = document.getElementById('toast-icon');
-            if (type === 'error') {
-                icon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-base";
-            } else {
-                icon.className = "fa-solid fa-check text-emerald-400 text-base";
-            }
-
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3500);
         }
 
-        document.getElementById('submission-date').addEventListener('change', () => {
-            loadLocalDraftNotes();
-        });
+        function exportManagerPDF() {
+            const element = document.getElementById('managerReportPrintArea');
+            const opt = {
+                margin:       0.5,
+                filename:     `Charlmun_Teller_Report_${document.getElementById('globalBranchSelect').value}_${new Date().toISOString().slice(0,10)}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().from(element).set(opt).save();
+        }
+
+        function clearAllSubmissions() {
+            if (confirm('Are you sure you want to clear all submission history?')) {
+                if (isCloudConnected && window.FB_DB) {
+                    const db = window.FB_DB;
+                    window.FB_Set(window.FB_Ref(db, 'submissions'), null);
+                }
+                allSubmissions = [];
+                renderManagerTable();
+                alert('History cleared.');
+            }
+        }
     </script>
 </body>
 </html>
